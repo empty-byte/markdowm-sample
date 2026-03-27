@@ -1,11 +1,19 @@
 ﻿<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { editorViewCtx } from '@milkdown/core'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { collab, collabServiceCtx } from '@milkdown/plugin-collab'
-import { replaceAll } from '@milkdown/utils'
+import type { Selection } from '@milkdown/prose/state'
+import { TextSelection } from '@milkdown/prose/state'
+import type { EditorView } from '@milkdown/prose/view'
+import { forceUpdate, replaceAll, $prose } from '@milkdown/utils'
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider'
 import * as Y from 'yjs'
 import '@milkdown/crepe/theme/common/style.css'
+import createCommentAnchorHighlightPlugin, {
+  type CommentHighlightRange,
+} from '../features/editor-enhance/comment-anchor-highlight'
+import { addComment, removeComment, type EditorComment } from '../features/editor-enhance/comments'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -27,6 +35,12 @@ interface PaletteAction {
   label: string
   description: string
   run: () => void
+}
+
+interface SelectedQuoteRange {
+  from: number
+  to: number
+  quote: string
 }
 
 const themeOptions: Array<{ value: ThemeKind; label: string }> = [
@@ -164,6 +178,12 @@ const copied = ref(false)
 const paletteVisible = ref(false)
 const paletteQuery = ref('')
 const paletteIndex = ref(0)
+const commentDraft = ref('')
+const comments = ref<EditorComment[]>([])
+const selectedRange = ref<SelectedQuoteRange | null>(null)
+const activeCommentId = ref<string | null>(null)
+const activeCommentRange = ref<CommentHighlightRange | null>(null)
+const commentItemRefs = new Map<string, HTMLElement>()
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
   crepeFeatureItems.reduce((acc, item) => {
@@ -195,6 +215,12 @@ let syncingFromPane = false
 let syncingFromEditor = false
 let rebuildVersion = 0
 let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+const commentHighlight = $prose(() =>
+  createCommentAnchorHighlightPlugin({
+    getRange: () => activeCommentRange.value,
+  })
+)
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
@@ -326,11 +352,135 @@ const filteredPaletteActions = computed(() => {
   })
 })
 
+const activeComment = computed(() =>
+  comments.value.find((item) => item.id === activeCommentId.value) ?? null
+)
+
+const commentCountLabel = computed(() => `${comments.value.length} 条评论`)
+
+const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
+
 function getFeatureFlags() {
   return crepeFeatureItems.reduce((acc, item) => {
     acc[item.key] = featureFlags.value[item.key]
     return acc
   }, {} as Partial<Record<CrepeFeature, boolean>>)
+}
+
+function getEditorView(): EditorView | null {
+  if (!crepe) return null
+
+  let view: EditorView | null = null
+  crepe.editor.action((ctx) => {
+    view = ctx.get(editorViewCtx)
+  })
+
+  return view
+}
+
+function setCommentItemRef(id: string, element: unknown) {
+  if (element instanceof HTMLElement) {
+    commentItemRefs.set(id, element)
+    return
+  }
+
+  commentItemRefs.delete(id)
+}
+
+function scrollCommentIntoView(id: string) {
+  const element = commentItemRefs.get(id)
+  element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
+function refreshCommentHighlight() {
+  crepe?.editor.action(forceUpdate())
+}
+
+function syncSelectionState(selection?: Selection) {
+  const view = getEditorView()
+  const currentSelection = selection ?? view?.state.selection
+
+  if (!view || !currentSelection || currentSelection.empty) {
+    selectedRange.value = null
+    return
+  }
+
+  const from = Math.min(currentSelection.from, currentSelection.to)
+  const to = Math.max(currentSelection.from, currentSelection.to)
+  const quote = view.state.doc.textBetween(from, to, ' ').replace(/\s+/g, ' ').trim()
+
+  if (!quote) {
+    selectedRange.value = null
+    return
+  }
+
+  selectedRange.value = {
+    from,
+    to,
+    quote,
+  }
+}
+
+function formatTime(time: number) {
+  return new Date(time).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function updateActiveCommentRange() {
+  const current = comments.value.find((item) => item.id === activeCommentId.value)
+  activeCommentRange.value = current ? { from: current.from, to: current.to } : null
+  refreshCommentHighlight()
+}
+
+function focusComment(comment: EditorComment) {
+  activeCommentId.value = comment.id
+  updateActiveCommentRange()
+
+  crepe?.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const docSize = view.state.doc.content.size
+    const from = Math.max(0, Math.min(comment.from, docSize))
+    const to = Math.max(from, Math.min(comment.to, docSize))
+    const selection = TextSelection.create(view.state.doc, from, to)
+    view.dispatch(view.state.tr.setSelection(selection).scrollIntoView())
+    view.focus()
+  })
+
+  void nextTick(() => {
+    scrollCommentIntoView(comment.id)
+  })
+}
+
+function submitComment() {
+  if (!selectedRange.value) return
+
+  const text = commentDraft.value.trim()
+  if (!text) return
+
+  const next = addComment(comments.value, {
+    text,
+    quote: selectedRange.value.quote,
+    from: selectedRange.value.from,
+    to: selectedRange.value.to,
+    author: '协作者',
+  })
+
+  comments.value = next
+  commentDraft.value = ''
+  focusComment(next[0])
+}
+
+function deleteComment(id: string) {
+  comments.value = removeComment(comments.value, id)
+
+  if (activeCommentId.value === id) {
+    activeCommentId.value = comments.value[0]?.id ?? null
+    updateActiveCommentRange()
+  }
 }
 
 async function destroyEditor() {
@@ -365,6 +515,7 @@ async function rebuildEditor(seed?: string) {
   })
 
   instance.editor.use(collab)
+  instance.editor.use(commentHighlight)
 
   instance.on((listener) => {
     listener.markdownUpdated((_ctx, next) => {
@@ -372,6 +523,10 @@ async function rebuildEditor(seed?: string) {
       syncingFromEditor = true
       markdown.value = next
       syncingFromEditor = false
+    })
+
+    listener.selectionUpdated((_ctx, selection) => {
+      syncSelectionState(selection)
     })
   })
 
@@ -394,6 +549,8 @@ async function rebuildEditor(seed?: string) {
 
   crepe = instance
   markdown.value = instance.getMarkdown()
+  syncSelectionState()
+  updateActiveCommentRange()
 
   if (collabWanted.value) provider.connect()
   else provider.disconnect()
@@ -407,6 +564,8 @@ async function applyMarkdownFromPane() {
   syncingFromPane = true
   crepe.editor.action(replaceAll(markdown.value, true))
   syncingFromPane = false
+  syncSelectionState()
+  updateActiveCommentRange()
 }
 
 function scheduleApplyMarkdownFromPane() {
@@ -421,6 +580,10 @@ function scheduleApplyMarkdownFromPane() {
 async function resetSampleMarkdown() {
   markdown.value = initialMarkdown
   await applyMarkdownFromPane()
+  comments.value = []
+  activeCommentId.value = null
+  selectedRange.value = null
+  updateActiveCommentRange()
 }
 
 async function copyMarkdown() {
@@ -510,6 +673,23 @@ function onGlobalKeydown(event: KeyboardEvent) {
   }
 }
 
+watch(activeCommentId, () => {
+  updateActiveCommentRange()
+})
+
+watch(comments, (items) => {
+  if (!items.length) {
+    activeCommentId.value = null
+    activeCommentRange.value = null
+    refreshCommentHighlight()
+    return
+  }
+
+  if (!items.some((item) => item.id === activeCommentId.value)) {
+    activeCommentId.value = items[0].id
+  }
+})
+
 watch(
   featureFlags,
   () => {
@@ -559,10 +739,9 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="page milk-playground-page">
-    <h1>方案2：Milkdown Playground（完整能力版）</h1>
+    <h1>Milkdown Playground（评论增强版）</h1>
     <p class="subtitle">
-      对齐官方 Playground 的核心体验：Crepe 可视化编辑、右侧 Markdown 同步、Slash/Toolbar/Block
-      编辑、图片表格代码块、主题切换与 Hocuspocus 协同。
+      保留 Milkdown 单方案，并补齐飞书式评论流程：选中文本、添加评论、锚点高亮、评论列表定位。
     </p>
 
     <div class="toolbar">
@@ -612,8 +791,8 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <div class="playground-split">
-      <section class="play-pane">
+    <div class="milk-workbench">
+      <section class="play-pane play-pane-editor">
         <header class="play-pane-head">
           <h3>Visual Editor</h3>
           <span>{{ activeThemeClass }}</span>
@@ -623,7 +802,69 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="play-pane">
+      <aside class="panel comments-panel">
+        <div class="comments-panel-head">
+          <div>
+            <h3>评论</h3>
+            <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
+          </div>
+          <span class="comments-badge" :data-active="Boolean(activeComment)">
+            {{ activeComment ? '已定位' : '未选中' }}
+          </span>
+        </div>
+
+        <blockquote class="selection-quote" :class="{ empty: !selectedRange }">
+          {{ selectedQuotePreview }}
+        </blockquote>
+
+        <textarea
+          v-model="commentDraft"
+          class="comment-input"
+          rows="4"
+          placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
+        ></textarea>
+
+        <div class="row-actions comment-actions">
+          <button
+            type="button"
+            class="btn"
+            :disabled="!selectedRange || !commentDraft.trim()"
+            @click="submitComment"
+          >
+            添加评论
+          </button>
+          <span class="panel-tip">点击列表项可回到正文锚点</span>
+        </div>
+
+        <ul v-if="comments.length" class="panel-list comments-list">
+          <li
+            v-for="item in comments"
+            :key="item.id"
+            :ref="(element) => setCommentItemRef(item.id, element)"
+            class="panel-item comment-card"
+            :class="{ active: item.id === activeCommentId }"
+            @click="focusComment(item)"
+          >
+            <div class="panel-item-head">
+              <strong>{{ item.author }}</strong>
+              <span>{{ formatTime(item.createdAt) }}</span>
+            </div>
+            <p>{{ item.text }}</p>
+            <p class="panel-item-quote">“{{ item.quote }}”</p>
+            <div class="row-actions">
+              <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>
+              <button type="button" class="btn xs ghost" @click.stop="deleteComment(item.id)">
+                删除
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="panel-tip comments-empty">
+          还没有评论。先在左侧选中一段文本，再输入评论内容。
+        </p>
+      </aside>
+
+      <section class="play-pane play-pane-markdown">
         <header class="play-pane-head">
           <h3>Markdown</h3>
           <span>{{ markdown.split('\n').length }} 行</span>
@@ -654,7 +895,7 @@ onBeforeUnmount(() => {
     </section>
 
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单，选中文本触发浮动工具栏。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在右侧直接添加评论并定位回锚点。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 

@@ -1,15 +1,12 @@
 ﻿# AGENTS.md
 
 ## 项目定位
-- 项目名称：Vue3 在线文档编辑器对比（类飞书）
-- 目标：在同一项目中对比并演示 3 套在线文档方案，验证“基础编辑 + 协同 + 菜单交互”的可落地性。
+- 项目名称：Vue3 Milkdown 在线文档编辑器（类飞书）
+- 目标：聚焦单一 Milkdown 方案，验证“基础编辑 + 协同 + 评论 + 菜单交互”的可落地性。
 - 技术栈：Vue 3 + TypeScript + Vite + Vue Router + Yjs + Hocuspocus。
 
 ## 页面与路由
-- `/`：方案总览页
-- `/tiptap`：Tiptap + Yjs + Hocuspocus（增强版，含评论/历史演示）
-- `/milkdown`：Milkdown Playground 风格页面（Crepe + 双栏 Markdown + 协同）
-- `/blocksuite`：BlockSuite 集成页
+- `/`：Milkdown Playground 风格页面（Crepe + 双栏 Markdown + 协同 + 评论）
 
 ## 常用命令
 - 安装依赖：`npm install`
@@ -32,8 +29,8 @@
 
 ## AI 改动约定
 - 优先保持现有路由结构和页面入口不变。
-- 改动编辑器功能时，避免影响其他方案页（Tiptap / Milkdown / BlockSuite 互不破坏）。
-- 涉及协同能力时，优先使用 `@hocuspocus/provider`，避免混用 `y-websocket` 协议。
+- 改动编辑器功能时，优先在 `src/views/MilkdownView.vue` 内完成，避免引入多方案分叉。
+- 涉及协同能力时，优先使用 `@hocuspocus/provider`，保持与本地 Hocuspocus 服务端协议一致。
 - UI 变更尽量复用 `src/style.css` 现有设计变量与组件样式。
 - 新增依赖后同步更新 `package.json` 与 `package-lock.json`。
 
@@ -45,7 +42,7 @@
 ## 提交前检查清单
 - `npm run test` 通过
 - `npm run build` 通过
-- 手工验证 `/tiptap` 与 `/milkdown` 的基本编辑、菜单与协同连接
+- 手工验证 `/` 页面上的基本编辑、评论流程、菜单与协同连接
 - README/文档在需求变化时同步更新
 
 ## 给后续 AI 的建议

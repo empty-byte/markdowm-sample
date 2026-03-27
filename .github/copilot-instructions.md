@@ -1,23 +1,20 @@
 ﻿# Copilot Instructions
 
 ## Project Context
-This repository is a Vue 3 + TypeScript demo for comparing online document editors in a Feishu-like workflow.
+This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document workflow.
 
-- `/tiptap`: Tiptap + Yjs + Hocuspocus (enhanced interactions)
-- `/milkdown`: Milkdown (Crepe playground-style page)
-- `/blocksuite`: BlockSuite integration demo
-- `/`: overview page
+- `/`: Milkdown (Crepe playground-style page with comments and collaboration)
 
 ## Tech Stack
 - Vue 3, TypeScript, Vite, Vue Router
 - Yjs + Hocuspocus (`@hocuspocus/provider`, `@hocuspocus/server`)
-- Tiptap / Milkdown / BlockSuite
+- Milkdown
 - Vitest
 
 ## High Priority Rules
-1. Keep each editor solution isolated. Do not break other pages while changing one page.
+1. Keep the single Milkdown page stable. Do not reintroduce other editor solutions unless explicitly requested.
 2. Keep route structure stable unless explicitly requested.
-3. For collaboration code, use Hocuspocus protocol first. Avoid mixing `y-websocket` client protocol with Hocuspocus server flow.
+3. For collaboration code, use Hocuspocus protocol first and keep client/server compatibility aligned.
 4. Prefer existing shared utilities under `src/features/editor-enhance/` before adding duplicate logic.
 5. When adding dependencies, update both `package.json` and `package-lock.json`.
 
@@ -39,7 +36,7 @@ This repository is a Vue 3 + TypeScript demo for comparing online document edito
 Always prefer this checklist:
 1. `npm run test`
 2. `npm run build`
-3. Manually check `/tiptap` and `/milkdown` for basic editing and collab connect/disconnect state.
+3. Manually check `/` for basic editing, comment flow, and collab connect/disconnect state.
 
 ## Collaboration Troubleshooting
 - If frontend shows `WebSocket connection ... failed`, check whether `npm run collab:server` is running.

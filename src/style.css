@@ -166,10 +166,6 @@ a {
   min-height: 460px;
 }
 
-.blocksuite-host {
-  padding: 6px;
-}
-
 .tip {
   margin-top: 14px;
   color: var(--muted);
@@ -355,7 +351,9 @@ code {
   }
 }
 
-.editor-shell .comment-anchor-highlight {
+.editor-shell .comment-anchor-highlight,
+.play-editor-shell .comment-anchor-highlight,
+.playground-host .comment-anchor-highlight {
   background: #fff08a;
   border-radius: 3px;
   box-shadow: inset 0 -1px 0 #f6c343;
@@ -511,6 +509,102 @@ code {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+}
+
+.milk-workbench {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 360px);
+  gap: 12px;
+  align-items: start;
+}
+
+.play-pane-editor,
+.play-pane-markdown {
+  min-width: 0;
+}
+
+.play-pane-markdown {
+  grid-column: 1 / 2;
+}
+
+.comments-panel {
+  position: sticky;
+  top: 78px;
+  max-height: calc(100vh - 112px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  gap: 10px;
+  background:
+    linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(255, 252, 246, 0.96)),
+    var(--surface);
+}
+
+.comments-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comments-panel-head h3 {
+  margin: 0 0 4px;
+}
+
+.comments-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #8b5e00;
+  background: #fff3bf;
+  border: 1px solid #ffe066;
+}
+
+.comments-badge[data-active='true'] {
+  color: #1f6f43;
+  background: #e8fff1;
+  border-color: #9ee2b8;
+}
+
+.selection-quote.empty {
+  border-left-color: #d0d8e6;
+  background: #f8fafd;
+  color: #7c8797;
+}
+
+.comment-actions {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comments-list {
+  margin-top: 0;
+  max-height: none;
+  padding-right: 4px;
+}
+
+.comment-card {
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.comment-card:hover {
+  border-color: #bfd3ff;
+  box-shadow: 0 8px 18px rgba(49, 86, 158, 0.08);
+  transform: translateY(-1px);
+}
+
+.comments-empty {
+  margin: 0;
+  padding: 14px;
+  border: 1px dashed #ccd8ea;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .play-pane {
@@ -768,8 +862,18 @@ code {
 }
 
 @media (max-width: 1200px) {
+  .milk-workbench,
   .playground-split {
     grid-template-columns: 1fr;
+  }
+
+  .play-pane-markdown {
+    grid-column: auto;
+  }
+
+  .comments-panel {
+    position: static;
+    max-height: none;
   }
 
   .play-editor-shell,

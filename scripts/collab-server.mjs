@@ -11,4 +11,4 @@ const server = new Server({
 await server.listen()
 
 console.log(`\n[collab] websocket ready at ws://${address}:${port}`)
-console.log('[collab] open two browser tabs, edit /tiptap, and click "连接协同" in both tabs.\n')
+console.log('[collab] open two browser tabs, edit /, and click "连接协同" in both tabs.\n')

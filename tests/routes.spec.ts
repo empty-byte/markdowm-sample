@@ -1,14 +1,9 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 import { demoRoutes } from '../src/router/routes'
 
 describe('editor demo routes', () => {
-  it('contains the home page and three方案 pages', () => {
-    expect(demoRoutes.map((route) => route.path)).toEqual([
-      '/',
-      '/tiptap',
-      '/milkdown',
-      '/blocksuite',
-    ])
+  it('only keeps the milkdown page route', () => {
+    expect(demoRoutes.map((route) => route.path)).toEqual(['/'])
   })
 
   it('exposes user-facing titles for navigation', () => {
