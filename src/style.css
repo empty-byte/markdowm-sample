@@ -148,6 +148,43 @@ a {
   background: #ebfbee;
 }
 
+.collab-count {
+  border-color: #cbd6e5;
+  color: #41536d;
+  background: #f5f8fd;
+}
+
+.collab-presence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.collab-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--user-color) 32%, #d8e1ef);
+  background: color-mix(in srgb, var(--user-color) 10%, #ffffff);
+  color: #28405f;
+  font-size: 12px;
+}
+
+.collab-user.local {
+  font-weight: 600;
+}
+
+.collab-user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--user-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--user-color) 18%, transparent);
+}
+
 .editor-shell {
   min-height: 520px;
   background: var(--surface);

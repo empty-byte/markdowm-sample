@@ -30,6 +30,7 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 - Comments: selected text can create comments from the floating toolbar; commented text uses yellow underline markers and active highlight.
 - Comment navigation: clicking commented text in the editor should activate and scroll the matching comment card on the right.
 - History: manual snapshots must save both markdown and comments, and selecting a history card should restore the document content in the visual editor.
+- Collaboration: clients in the same room should share the visual document, comments, and history snapshots, with awareness-driven collaborator presence visible in the UI.
 - Right column: comments and history live in one independently scrollable side column and each panel can collapse independently.
 - Markdown pane: keep it optional by default; users explicitly show it from the toolbar and can hide it again from the pane header.
 

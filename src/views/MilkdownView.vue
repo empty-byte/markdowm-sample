@@ -54,6 +54,17 @@ interface SnapshotPayload {
   comments: EditorComment[]
 }
 
+interface CollaboratorIdentity {
+  id: string
+  name: string
+  color: string
+}
+
+interface CollaboratorPresence extends CollaboratorIdentity {
+  clientId: number
+  isLocal: boolean
+}
+
 const themeOptions: Array<{ value: ThemeKind; label: string }> = [
   { value: 'nord', label: 'Nord' },
   { value: 'frame', label: 'Frame' },
@@ -213,6 +224,8 @@ const featureFlags = ref<Record<CrepeFeature, boolean>>(
 const room = 'demo-milkdown-playground-room'
 const wsUrl = import.meta.env.VITE_COLLAB_WS_URL || 'ws://127.0.0.1:1234'
 const ydoc = new Y.Doc()
+const yComments = ydoc.getArray<EditorComment>('comments')
+const ySnapshots = ydoc.getArray<HistorySnapshot>('snapshots')
 const websocketProvider = new HocuspocusProviderWebsocket({
   url: wsUrl,
   autoConnect: false,
@@ -222,6 +235,15 @@ const provider = new HocuspocusProvider({
   document: ydoc,
   websocketProvider,
 })
+provider.attach()
+
+const collaboratorPalette = ['#2f6fed', '#d9480f', '#2b8a3e', '#8e44ad', '#0c8599', '#c2255c']
+const localCollaborator: CollaboratorIdentity = {
+  id: `user_${ydoc.clientID}`,
+  name: `协作者 ${String(ydoc.clientID).slice(-4)}`,
+  color: collaboratorPalette[ydoc.clientID % collaboratorPalette.length],
+}
+const collaborators = ref<CollaboratorPresence[]>([])
 
 provider.on('status', (event: { status: ConnectionStatus }) => {
   status.value = event.status
@@ -414,6 +436,10 @@ const activeSnapshot = computed(() =>
 
 const commentCountLabel = computed(() => `${comments.value.length} 条评论`)
 const snapshotCountLabel = computed(() => `${snapshots.value.length} 条历史记录`)
+const collaboratorCountLabel = computed(() => {
+  if (status.value !== 'connected') return '协同未连接'
+  return `${collaborators.value.length} 位协作者在线`
+})
 
 const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
 
@@ -462,6 +488,84 @@ function isEditorCommentRecord(value: unknown): value is EditorComment {
     typeof item.author === 'string' &&
     typeof item.createdAt === 'number'
   )
+}
+
+function isHistorySnapshotRecord(value: unknown): value is HistorySnapshot {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as HistorySnapshot
+  return (
+    typeof item.id === 'string' &&
+    typeof item.label === 'string' &&
+    typeof item.content === 'string' &&
+    typeof item.createdAt === 'number'
+  )
+}
+
+function isCollaboratorIdentity(value: unknown): value is CollaboratorIdentity {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as CollaboratorIdentity
+  return (
+    typeof item.id === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.color === 'string'
+  )
+}
+
+function syncCommentsFromSharedState() {
+  comments.value = yComments.toArray().filter(isEditorCommentRecord)
+}
+
+function syncSnapshotsFromSharedState() {
+  snapshots.value = ySnapshots.toArray().filter(isHistorySnapshotRecord)
+}
+
+function replaceSharedComments(next: EditorComment[]) {
+  ydoc.transact(() => {
+    yComments.delete(0, yComments.length)
+    if (next.length) yComments.insert(0, next)
+  })
+}
+
+function replaceSharedSnapshots(next: HistorySnapshot[]) {
+  ydoc.transact(() => {
+    ySnapshots.delete(0, ySnapshots.length)
+    if (next.length) ySnapshots.insert(0, next)
+  })
+}
+
+function refreshCollaborators() {
+  const awarenessStates = provider.awareness?.getStates()
+  if (!awarenessStates) {
+    collaborators.value = []
+    return
+  }
+
+  const next: CollaboratorPresence[] = []
+  awarenessStates.forEach((state, clientId) => {
+    const user = state && typeof state === 'object' ? (state as { user?: unknown }).user : null
+    if (!isCollaboratorIdentity(user)) return
+
+    next.push({
+      ...user,
+      clientId,
+      isLocal: clientId === ydoc.clientID,
+    })
+  })
+
+  collaborators.value = next.sort((left, right) => {
+    if (left.isLocal !== right.isLocal) {
+      return left.isLocal ? -1 : 1
+    }
+
+    return left.name.localeCompare(right.name, 'zh-CN')
+  })
+}
+
+function syncLocalAwareness() {
+  provider.awareness?.setLocalStateField('user', localCollaborator)
+  refreshCollaborators()
 }
 
 function getCurrentMarkdownSnapshot() {
@@ -629,10 +733,10 @@ function submitComment() {
     quote: selectedRange.value.quote,
     from: selectedRange.value.from,
     to: selectedRange.value.to,
-    author: '协作者',
+    author: localCollaborator.name,
   })
 
-  comments.value = next
+  replaceSharedComments(next)
   commentDraft.value = ''
   focusComment(next[0])
 }
@@ -660,7 +764,7 @@ function createHistorySnapshot() {
     content: serializeSnapshotPayload(),
   })
 
-  snapshots.value = next
+  replaceSharedSnapshots(next)
   activeSnapshotId.value = next[0]?.id ?? null
   snapshotLabel.value = ''
 }
@@ -674,7 +778,7 @@ async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
   suppressCommentAutoSelect = true
   activeCommentId.value = null
   activeCommentRange.value = null
-  comments.value = payload.comments
+  replaceSharedComments(payload.comments)
   await syncEditorMarkdown(payload.markdown)
 
   suppressCommentAutoSelect = false
@@ -686,7 +790,7 @@ async function selectHistorySnapshot(snapshot: HistorySnapshot) {
 }
 
 function deleteHistorySnapshot(id: string) {
-  snapshots.value = removeSnapshot(snapshots.value, id)
+  replaceSharedSnapshots(removeSnapshot(snapshots.value, id))
 
   if (activeSnapshotId.value === id) {
     activeSnapshotId.value = snapshots.value[0]?.id ?? null
@@ -694,7 +798,7 @@ function deleteHistorySnapshot(id: string) {
 }
 
 function deleteComment(id: string) {
-  comments.value = removeComment(comments.value, id)
+  replaceSharedComments(removeComment(comments.value, id))
 
   if (activeCommentId.value === id) {
     activeCommentId.value = comments.value[0]?.id ?? null
@@ -782,8 +886,8 @@ async function rebuildEditor(seed?: string) {
   syncSelectionState()
   updateActiveCommentRange()
 
-  if (collabWanted.value) provider.connect()
-  else provider.disconnect()
+  if (collabWanted.value) void websocketProvider.connect()
+  else websocketProvider.disconnect()
 
   isRebuilding.value = false
 }
@@ -825,7 +929,7 @@ function scheduleApplyMarkdownFromPane() {
 async function resetSampleMarkdown() {
   markdown.value = initialMarkdown
   await applyMarkdownFromPane()
-  comments.value = []
+  replaceSharedComments([])
   activeCommentId.value = null
   selectedRange.value = null
   updateActiveCommentRange()
@@ -846,10 +950,13 @@ async function copyMarkdown() {
 
 function connectCollab() {
   collabWanted.value = true
+  syncLocalAwareness()
 }
 
 function disconnectCollab() {
+  provider.awareness?.setLocalState(null)
   collabWanted.value = false
+  refreshCollaborators()
 }
 
 function openPalette() {
@@ -953,8 +1060,13 @@ watch(readonlyMode, (value) => {
 })
 
 watch(collabWanted, (value) => {
-  if (value) provider.connect()
-  else provider.disconnect()
+  if (value) {
+    syncLocalAwareness()
+    void websocketProvider.connect()
+  } else {
+    websocketProvider.disconnect()
+    refreshCollaborators()
+  }
 })
 
 watch(filteredPaletteActions, (items) => {
@@ -970,6 +1082,12 @@ watch(filteredPaletteActions, (items) => {
 
 onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeydown)
+  yComments.observe(syncCommentsFromSharedState)
+  ySnapshots.observe(syncSnapshotsFromSharedState)
+  provider.awareness?.on('change', refreshCollaborators)
+  syncCommentsFromSharedState()
+  syncSnapshotsFromSharedState()
+  refreshCollaborators()
   await rebuildEditor(initialMarkdown)
 })
 
@@ -979,6 +1097,9 @@ onBeforeUnmount(() => {
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
 
+  yComments.unobserve(syncCommentsFromSharedState)
+  ySnapshots.unobserve(syncSnapshotsFromSharedState)
+  provider.awareness?.off('change', refreshCollaborators)
   provider.destroy()
   websocketProvider.destroy()
   ydoc.destroy()
@@ -1031,6 +1152,21 @@ onBeforeUnmount(() => {
       <button type="button" class="btn" @click="connectCollab">连接协同</button>
       <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>
       <span class="status" :data-online="status === 'connected'">{{ status }}</span>
+      <span class="status collab-count" :data-online="status === 'connected'">
+        {{ collaboratorCountLabel }}
+      </span>
+      <div v-if="collaborators.length" class="collab-presence">
+        <span
+          v-for="item in collaborators"
+          :key="item.id"
+          class="collab-user"
+          :class="{ local: item.isLocal }"
+          :style="{ '--user-color': item.color }"
+        >
+          <i class="collab-user-dot"></i>
+          {{ item.isLocal ? `${item.name}（我）` : item.name }}
+        </span>
+      </div>
     </div>
 
     <section class="milk-playground-config card">
