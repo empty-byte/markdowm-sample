@@ -9,6 +9,8 @@ export interface CommentHighlightRange {
 export interface CommentAnchorHighlightOptions {
   getRanges: () => CommentHighlightRange[]
   getActiveRange: () => CommentHighlightRange | null
+  getRangeKeyAt: (pos: number) => string | null
+  onClickRange: (key: string) => void
 }
 
 export const commentAnchorHighlightPluginKey = new PluginKey('commentAnchorHighlight')
@@ -43,6 +45,13 @@ export function createCommentAnchorHighlightPlugin(options: CommentAnchorHighlig
         if (!decorations.length) return null
 
         return DecorationSet.create(state.doc, decorations)
+      },
+      handleClick: (_view, pos) => {
+        const key = options.getRangeKeyAt(pos)
+        if (!key) return false
+
+        options.onClickRange(key)
+        return false
       },
     },
   })

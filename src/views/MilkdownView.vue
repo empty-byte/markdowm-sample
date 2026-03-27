@@ -240,6 +240,10 @@ const commentHighlight = $prose(() =>
   createCommentAnchorHighlightPlugin({
     getRanges: () => comments.value.map((item) => ({ from: item.from, to: item.to })),
     getActiveRange: () => activeCommentRange.value,
+    getRangeKeyAt: (pos) => findCommentByPosition(pos)?.id ?? null,
+    onClickRange: (key) => {
+      activateCommentById(key)
+    },
   })
 )
 
@@ -413,6 +417,28 @@ function scrollCommentIntoView(id: string) {
   element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
+function findCommentByPosition(pos: number) {
+  return (
+    comments.value.find((item) => {
+      const from = Math.min(item.from, item.to)
+      const to = Math.max(item.from, item.to)
+      return pos >= from && pos <= to
+    }) ?? null
+  )
+}
+
+function activateCommentById(id: string) {
+  const comment = comments.value.find((item) => item.id === id)
+  if (!comment) return
+
+  activeCommentId.value = comment.id
+  updateActiveCommentRange()
+
+  void nextTick(() => {
+    scrollCommentIntoView(comment.id)
+  })
+}
+
 function focusCommentInput() {
   commentInputRef.value?.focus()
   commentInputRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -463,8 +489,7 @@ function updateActiveCommentRange() {
 }
 
 function focusComment(comment: EditorComment) {
-  activeCommentId.value = comment.id
-  updateActiveCommentRange()
+  activateCommentById(comment.id)
 
   crepe?.editor.action((ctx) => {
     const view = ctx.get(editorViewCtx)
@@ -903,7 +928,7 @@ onBeforeUnmount(() => {
               <strong>{{ item.author }}</strong>
               <span>{{ formatTime(item.createdAt) }}</span>
             </div>
-            <p>{{ item.text }}</p>
+            <p class="comment-text">{{ item.text }}</p>
             <p class="panel-item-quote">“{{ item.quote }}”</p>
             <div class="row-actions">
               <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>

@@ -379,6 +379,15 @@ code {
   background: #fffbea;
 }
 
+.panel-item.active .comment-text {
+  display: inline;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(255, 240, 138, 0), rgba(255, 240, 138, 0.95));
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .slash-menu {
   position: fixed;
   z-index: 40;
