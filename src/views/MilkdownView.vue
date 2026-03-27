@@ -164,6 +164,7 @@ await crepe.create()
 `
 
 const host = ref<HTMLDivElement | null>(null)
+const commentInputRef = ref<HTMLTextAreaElement | null>(null)
 const paletteInputRef = ref<HTMLInputElement | null>(null)
 const status = ref<ConnectionStatus>('disconnected')
 const markdown = ref(initialMarkdown)
@@ -216,9 +217,29 @@ let syncingFromEditor = false
 let rebuildVersion = 0
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
+const commentToolbarIcon = `
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+  >
+    <path
+      d="M7 18.5H6.8L3.75 20.75V6.75C3.75 5.7835 4.5335 5 5.5 5H15.5C16.4665 5 17.25 5.7835 17.25 6.75V11.5H15.75V6.75C15.75 6.612 15.638 6.5 15.5 6.5H5.5C5.362 6.5 5.25 6.612 5.25 6.75V17.75L6.32 17H15.5C15.638 17 15.75 16.888 15.75 16.75V15H17.25V16.75C17.25 17.7165 16.4665 18.5 15.5 18.5H7Z"
+      fill="currentColor"
+    />
+    <path
+      d="M18.5 10.25C18.914 10.25 19.25 10.586 19.25 11V12.75H21C21.414 12.75 21.75 13.086 21.75 13.5C21.75 13.914 21.414 14.25 21 14.25H19.25V16C19.25 16.414 18.914 16.75 18.5 16.75C18.086 16.75 17.75 16.414 17.75 16V14.25H16C15.586 14.25 15.25 13.914 15.25 13.5C15.25 13.086 15.586 12.75 16 12.75H17.75V11C17.75 10.586 18.086 10.25 18.5 10.25Z"
+      fill="currentColor"
+    />
+  </svg>
+`
+
 const commentHighlight = $prose(() =>
   createCommentAnchorHighlightPlugin({
-    getRange: () => activeCommentRange.value,
+    getRanges: () => comments.value.map((item) => ({ from: item.from, to: item.to })),
+    getActiveRange: () => activeCommentRange.value,
   })
 )
 
@@ -392,6 +413,11 @@ function scrollCommentIntoView(id: string) {
   element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
+function focusCommentInput() {
+  commentInputRef.value?.focus()
+  commentInputRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
 function refreshCommentHighlight() {
   crepe?.editor.action(forceUpdate())
 }
@@ -474,6 +500,22 @@ function submitComment() {
   focusComment(next[0])
 }
 
+function beginCommentFromSelection() {
+  syncSelectionState()
+  if (!selectedRange.value) return
+
+  activeCommentId.value = null
+  activeCommentRange.value = {
+    from: selectedRange.value.from,
+    to: selectedRange.value.to,
+  }
+  refreshCommentHighlight()
+
+  void nextTick(() => {
+    focusCommentInput()
+  })
+}
+
 function deleteComment(id: string) {
   comments.value = removeComment(comments.value, id)
 
@@ -510,6 +552,17 @@ async function rebuildEditor(seed?: string) {
       },
       [CrepeFeature.Placeholder]: {
         text: 'Type / to open slash menu...',
+      },
+      [CrepeFeature.Toolbar]: {
+        buildToolbar: (builder) => {
+          builder.getGroup('function').addItem('comment', {
+            icon: commentToolbarIcon,
+            active: () => Boolean(selectedRange.value),
+            onRun: () => {
+              beginCommentFromSelection()
+            },
+          })
+        },
       },
     },
   })
@@ -818,6 +871,7 @@ onBeforeUnmount(() => {
         </blockquote>
 
         <textarea
+          ref="commentInputRef"
           v-model="commentDraft"
           class="comment-input"
           rows="4"
@@ -895,7 +949,7 @@ onBeforeUnmount(() => {
     </section>
 
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在右侧直接添加评论并定位回锚点。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 

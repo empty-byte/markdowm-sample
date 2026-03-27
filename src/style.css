@@ -248,6 +248,12 @@ code {
   margin-bottom: 8px;
 }
 
+.comment-input:focus {
+  outline: 2px solid rgba(15, 109, 255, 0.18);
+  border-color: #7aa7ff;
+  box-shadow: 0 0 0 4px rgba(15, 109, 255, 0.08);
+}
+
 .panel-list {
   list-style: none;
   margin: 10px 0 0;
@@ -351,12 +357,21 @@ code {
   }
 }
 
+.editor-shell .comment-anchor-mark,
+.play-editor-shell .comment-anchor-mark,
+.playground-host .comment-anchor-mark {
+  text-decoration-line: underline;
+  text-decoration-color: #f6c343;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.18em;
+}
+
 .editor-shell .comment-anchor-highlight,
 .play-editor-shell .comment-anchor-highlight,
 .playground-host .comment-anchor-highlight {
   background: #fff08a;
   border-radius: 3px;
-  box-shadow: inset 0 -1px 0 #f6c343;
+  box-shadow: inset 0 -1px 0 rgba(246, 195, 67, 0.5);
 }
 
 .panel-item.active {

@@ -7,7 +7,8 @@ export interface CommentHighlightRange {
 }
 
 export interface CommentAnchorHighlightOptions {
-  getRange: () => CommentHighlightRange | null
+  getRanges: () => CommentHighlightRange[]
+  getActiveRange: () => CommentHighlightRange | null
 }
 
 export const commentAnchorHighlightPluginKey = new PluginKey('commentAnchorHighlight')
@@ -17,18 +18,31 @@ export function createCommentAnchorHighlightPlugin(options: CommentAnchorHighlig
     key: commentAnchorHighlightPluginKey,
     props: {
       decorations: (state) => {
-        const range = options.getRange()
-        if (!range) return null
-
         const docSize = state.doc.content.size
-        const from = Math.max(0, Math.min(range.from, docSize))
-        const to = Math.max(from, Math.min(range.to, docSize))
+        const decorations = options.getRanges().flatMap((range) => {
+          const from = Math.max(0, Math.min(range.from, docSize))
+          const to = Math.max(from, Math.min(range.to, docSize))
 
-        if (from === to) return null
+          if (from === to) return []
 
-        return DecorationSet.create(state.doc, [
-          Decoration.inline(from, to, { class: 'comment-anchor-highlight' }),
-        ])
+          return [Decoration.inline(from, to, { class: 'comment-anchor-mark' })]
+        })
+
+        const activeRange = options.getActiveRange()
+        if (activeRange) {
+          const from = Math.max(0, Math.min(activeRange.from, docSize))
+          const to = Math.max(from, Math.min(activeRange.to, docSize))
+
+          if (from !== to) {
+            decorations.push(
+              Decoration.inline(from, to, { class: 'comment-anchor-highlight' })
+            )
+          }
+        }
+
+        if (!decorations.length) return null
+
+        return DecorationSet.create(state.doc, decorations)
       },
     },
   })
