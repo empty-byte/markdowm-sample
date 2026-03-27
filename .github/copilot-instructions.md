@@ -31,6 +31,7 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 - Comment navigation: clicking commented text in the editor should activate and scroll the matching comment card on the right.
 - History: manual snapshots must save both markdown and comments, and selecting a history card should restore the document content in the visual editor.
 - Collaboration: clients in the same room should share the visual document, comments, and history snapshots, with awareness-driven collaborator presence visible in the UI.
+- Connection UX: collaboration remains manual-connect for now; the top toolbar buttons should correctly attach the provider and connect via the shared websocket provider.
 - Right column: comments and history live in one independently scrollable side column and each panel can collapse independently.
 - Markdown pane: keep it optional by default; users explicitly show it from the toolbar and can hide it again from the pane header.
 
@@ -45,10 +46,12 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 Always prefer this checklist:
 1. `npm run test`
 2. `npm run build`
-3. Manually check `/` for basic editing, comment flow, history snapshot restore, markdown pane toggle, and collab connect/disconnect state.
+3. Manually check `/` for basic editing, comment flow, history snapshot restore, markdown pane toggle, and collab connect/disconnect state across two browser windows.
 
 ## Collaboration Troubleshooting
 - If frontend shows `WebSocket connection ... failed`, check whether `npm run collab:server` is running.
+- If starting the collab server returns `EADDRINUSE`, a server is already listening on port `1234`; reuse it or stop that process before restarting.
+- If the UI stays `disconnected` after clicking connect, verify the client is using `provider.attach()` plus `websocketProvider.connect()` rather than relying on deprecated `provider.connect()` behavior with an injected websocket provider.
 - If `ERR_ENCODING_INVALID_ENCODED_DATA` appears, verify provider/server protocol compatibility and keep Hocuspocus on both sides.
 
 ## Style Guidance

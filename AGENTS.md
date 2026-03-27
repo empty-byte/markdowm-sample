@@ -38,21 +38,23 @@
 ## 当前已落地能力
 - 评论：支持正文选区后从浮动工具栏发起评论；已评论文本显示黄色下划线；点击正文锚点可高亮右侧对应评论。
 - 历史：支持手动创建快照，快照保存 markdown 与 comments；点击历史卡片可直接还原当前版本。
-- 协同：同一房间内共享正文、评论和历史快照；工具栏可展示在线协作者状态。
+- 协同：同一房间内共享正文、评论和历史快照；工具栏可展示在线协作者状态；连接按钮会显式控制 websocket 连接。
 - 侧栏：评论面板和历史面板共享右侧独立滚动区域，并支持分别折叠。
 - Markdown：下方 Markdown 面板默认隐藏，通过顶部按钮显示；展开后支持手动应用、自动同步和收起。
 
 ## 已知问题与排查
 - 若前端提示 `WebSocket connection ... failed`：先确认 `npm run collab:server` 已启动。
+- 若重复启动协同服务时报 `EADDRINUSE`：说明 `1234` 端口已有 Hocuspocus 服务在运行，直接复用现有进程即可。
+- 若点击“连接协同”后仍未进入 `connected`：优先检查当前代码是否已包含 `provider.attach()` 和 `websocketProvider.connect()` 这条连接链路。
 - 若出现 `ERR_ENCODING_INVALID_ENCODED_DATA`：通常是客户端 provider 与服务端协议不匹配，需统一为 Hocuspocus。
 - Milkdown 页面构建体积较大（CodeMirror 语言包导致），属于当前可接受状态。
 
 ## 提交前检查清单
 - `npm run test` 通过
 - `npm run build` 通过
-- 手工验证 `/` 页面上的基本编辑、评论流程、历史快照还原、Markdown 面板显隐与协同连接
+- 手工验证 `/` 页面上的基本编辑、评论流程、历史快照还原、Markdown 面板显隐，以及双窗口协同连接与实时同步
 - README/文档在需求变化时同步更新
 
 ## 给后续 AI 的建议
 - 若用户要求“对齐官方 playground”，优先从 `src/views/MilkdownView.vue` 入手，不要先改全局布局。
-- 若用户要求“类似飞书交互”，优先增强 slash 菜单、命令面板、评论锚点高亮、历史快照流程与键盘可达性。
+- 若用户要求“类似飞书交互”，优先增强 slash 菜单、命令面板、评论锚点高亮、历史快照流程、协作者 presence 与键盘可达性。
