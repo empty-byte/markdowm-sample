@@ -3,7 +3,7 @@
 ## Project Context
 This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document workflow.
 
-- `/`: Milkdown (Crepe playground-style page with comments and collaboration)
+- `/`: Milkdown (Crepe playground-style page with comments, history snapshots, collaboration, and a toggleable Markdown pane)
 
 ## Tech Stack
 - Vue 3, TypeScript, Vite, Vue Router
@@ -16,7 +16,8 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 2. Keep route structure stable unless explicitly requested.
 3. For collaboration code, use Hocuspocus protocol first and keep client/server compatibility aligned.
 4. Prefer existing shared utilities under `src/features/editor-enhance/` before adding duplicate logic.
-5. When adding dependencies, update both `package.json` and `package-lock.json`.
+5. When restoring history snapshots or externally applying markdown, keep the Milkdown editor state and current Y.Doc aligned; do not update only the textarea state.
+6. When adding dependencies, update both `package.json` and `package-lock.json`.
 
 ## File Ownership Hints
 - `src/views/*.vue`: solution pages and UI behavior
@@ -24,6 +25,13 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 - `src/router/*`: navigation and route metadata
 - `scripts/collab-server.mjs`: local collab websocket server
 - `src/style.css`: global styling system
+
+## Current Feature Expectations
+- Comments: selected text can create comments from the floating toolbar; commented text uses yellow underline markers and active highlight.
+- Comment navigation: clicking commented text in the editor should activate and scroll the matching comment card on the right.
+- History: manual snapshots must save both markdown and comments, and selecting a history card should restore the document content in the visual editor.
+- Right column: comments and history live in one independently scrollable side column and each panel can collapse independently.
+- Markdown pane: keep it optional by default; users explicitly show it from the toolbar and can hide it again from the pane header.
 
 ## Local Commands
 - Install: `npm install`
@@ -36,7 +44,7 @@ This repository is a Vue 3 + TypeScript Milkdown demo for a Feishu-like document
 Always prefer this checklist:
 1. `npm run test`
 2. `npm run build`
-3. Manually check `/` for basic editing, comment flow, and collab connect/disconnect state.
+3. Manually check `/` for basic editing, comment flow, history snapshot restore, markdown pane toggle, and collab connect/disconnect state.
 
 ## Collaboration Troubleshooting
 - If frontend shows `WebSocket connection ... failed`, check whether `npm run collab:server` is running.
@@ -50,5 +58,5 @@ Always prefer this checklist:
 ## Scope Control
 If a request asks for “playground-like” or “Feishu-like” behavior, prioritize:
 1. slash menu / command panel
-2. comment anchors and history snapshot flow
-3. collaboration status and reconnect UX
+2. comment anchors, floating comment entry, and history snapshot flow
+3. collaboration status, reconnect UX, and markdown pane visibility flow
