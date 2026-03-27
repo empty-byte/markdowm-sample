@@ -797,6 +797,12 @@ code {
   color: var(--muted);
 }
 
+.play-pane-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .play-editor-shell {
   min-height: 700px;
   padding: 0;

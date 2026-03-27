@@ -190,6 +190,7 @@ const copied = ref(false)
 const paletteVisible = ref(false)
 const paletteQuery = ref('')
 const paletteIndex = ref(0)
+const markdownPaneVisible = ref(false)
 const commentsCollapsed = ref(false)
 const historyCollapsed = ref(false)
 const commentDraft = ref('')
@@ -1016,6 +1017,14 @@ onBeforeUnmount(() => {
       </label>
 
       <button type="button" class="btn" @click="openPalette">功能面板 (Ctrl+K)</button>
+      <button
+        type="button"
+        class="btn"
+        :aria-expanded="markdownPaneVisible"
+        @click="markdownPaneVisible = !markdownPaneVisible"
+      >
+        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
+      </button>
       <button type="button" class="btn" :disabled="isRebuilding" @click="applyMarkdownFromPane">应用右侧 Markdown</button>
       <button type="button" class="btn" @click="resetSampleMarkdown">恢复示例</button>
       <button type="button" class="btn" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
@@ -1197,10 +1206,13 @@ onBeforeUnmount(() => {
         </section>
       </aside>
 
-      <section class="play-pane play-pane-markdown">
+      <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown">
         <header class="play-pane-head">
           <h3>Markdown</h3>
-          <span>{{ markdown.split('\n').length }} 行</span>
+          <div class="play-pane-head-actions">
+            <span>{{ markdown.split('\n').length }} 行</span>
+            <button type="button" class="btn xs ghost" @click="markdownPaneVisible = false">收起</button>
+          </div>
         </header>
 
         <div class="markdown-pane">
