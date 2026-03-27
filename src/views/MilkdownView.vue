@@ -1001,7 +1001,7 @@ onBeforeUnmount(() => {
         >
           <div class="menu-row">
             <strong>{{ item.label }}</strong>
-            <span class="menu-group">{{ item.group }}</span>
+            <span class="command-menu-group">{{ item.group }}</span>
           </div>
           <p>{{ item.description }}</p>
         </li>
