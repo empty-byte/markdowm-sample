@@ -1,6 +1,6 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { addComment, removeComment } from '../src/features/editor-enhance/comments'
-import { createSnapshot, findSnapshot } from '../src/features/editor-enhance/history'
+import { createSnapshot, findSnapshot, removeSnapshot } from '../src/features/editor-enhance/history'
 import { filterCommands } from '../src/features/editor-enhance/commands'
 
 describe('editor enhance helpers', () => {
@@ -27,6 +27,10 @@ describe('editor enhance helpers', () => {
     expect(second[0].label).toBe('v2')
     expect(second[1].label).toBe('v1')
     expect(findSnapshot(second, second[1].id)?.label).toBe('v1')
+
+    const removed = removeSnapshot(second, second[0].id)
+    expect(removed).toHaveLength(1)
+    expect(removed[0].label).toBe('v1')
   })
 
   it('filters command menu items by query', () => {

@@ -379,6 +379,11 @@ code {
   background: #fffbea;
 }
 
+.history-card.active {
+  border-color: #f0b95d;
+  background: linear-gradient(180deg, #fff9ed, #fff3d9);
+}
+
 .panel-item.active .comment-text {
   display: inline;
   padding: 0 4px;
@@ -543,6 +548,38 @@ code {
   align-items: start;
 }
 
+.play-side-panels {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  position: sticky;
+  top: 78px;
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #9cb4de rgba(226, 235, 248, 0.95);
+}
+
+.play-side-panels::-webkit-scrollbar {
+  width: 12px;
+}
+
+.play-side-panels::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(234, 241, 251, 0.95), rgba(245, 248, 253, 0.95));
+}
+
+.play-side-panels::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(234, 241, 251, 0.95);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #9bb4df, #6f8fc9);
+}
+
+.play-side-panels::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #87a3d8, #5578bb);
+}
+
 .play-pane-editor,
 .play-pane-markdown {
   min-width: 0;
@@ -553,18 +590,32 @@ code {
 }
 
 .comments-panel {
-  position: sticky;
-  top: 78px;
-  max-height: calc(100vh - 112px);
-  overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   gap: 10px;
   background:
     linear-gradient(180deg, rgba(248, 251, 255, 0.96), rgba(255, 252, 246, 0.96)),
     var(--surface);
 }
 
+.history-panel {
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 251, 244, 0.96), rgba(247, 250, 255, 0.96)),
+    var(--surface);
+}
+
+.panel-section-body {
+  display: grid;
+  gap: 10px;
+}
+
+
+.history-card:focus-visible {
+  outline: 2px solid rgba(240, 185, 93, 0.45);
+  outline-offset: 2px;
+}
 .comments-panel-head {
   display: flex;
   align-items: flex-start;
@@ -572,7 +623,24 @@ code {
   gap: 12px;
 }
 
+.history-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .comments-panel-head h3 {
+  margin: 0 0 4px;
+}
+
+.history-panel-head h3 {
   margin: 0 0 4px;
 }
 
@@ -595,6 +663,44 @@ code {
   border-color: #9ee2b8;
 }
 
+.history-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #805610;
+  background: #fff0da;
+  border: 1px solid #f3c37b;
+}
+
+.history-badge[data-active='true'] {
+  color: #22543d;
+  background: #e7fff4;
+  border-color: #96ddba;
+}
+
+.panel-toggle {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #cfd8e6;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #54657d;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.panel-toggle:hover {
+  border-color: #8eaee3;
+  color: #2e538c;
+  background: #f5f9ff;
+}
+
 .selection-quote.empty {
   border-left-color: #d0d8e6;
   background: #f8fafd;
@@ -612,8 +718,18 @@ code {
   padding-right: 4px;
 }
 
+.history-list {
+  margin-top: 0;
+  max-height: 320px;
+  padding-right: 4px;
+}
+
 .comment-card {
   cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.history-card {
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
@@ -623,12 +739,35 @@ code {
   transform: translateY(-1px);
 }
 
+.history-card:hover {
+  border-color: #f0c47a;
+  box-shadow: 0 8px 18px rgba(148, 102, 34, 0.08);
+  transform: translateY(-1px);
+}
+
 .comments-empty {
   margin: 0;
   padding: 14px;
   border: 1px dashed #ccd8ea;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.72);
+}
+
+.history-actions {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-preview {
+  margin: 6px 0;
+  color: #5d6675;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.comments-panel .panel-tip,
+.history-panel .panel-tip {
+  margin-bottom: 0;
 }
 
 .play-pane {
@@ -896,8 +1035,19 @@ code {
   }
 
   .comments-panel {
+    max-height: none;
+  }
+
+  .history-list {
+    max-height: none;
+  }
+
+  .play-side-panels {
     position: static;
     max-height: none;
+    overflow: visible;
+    padding-right: 0;
+    scrollbar-width: auto;
   }
 
   .play-editor-shell,

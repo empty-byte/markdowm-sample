@@ -14,6 +14,12 @@ import createCommentAnchorHighlightPlugin, {
   type CommentHighlightRange,
 } from '../features/editor-enhance/comment-anchor-highlight'
 import { addComment, removeComment, type EditorComment } from '../features/editor-enhance/comments'
+import {
+  createSnapshot,
+  findSnapshot,
+  removeSnapshot,
+  type HistorySnapshot,
+} from '../features/editor-enhance/history'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -41,6 +47,11 @@ interface SelectedQuoteRange {
   from: number
   to: number
   quote: string
+}
+
+interface SnapshotPayload {
+  markdown: string
+  comments: EditorComment[]
 }
 
 const themeOptions: Array<{ value: ThemeKind; label: string }> = [
@@ -179,11 +190,16 @@ const copied = ref(false)
 const paletteVisible = ref(false)
 const paletteQuery = ref('')
 const paletteIndex = ref(0)
+const commentsCollapsed = ref(false)
+const historyCollapsed = ref(false)
 const commentDraft = ref('')
+const snapshotLabel = ref('')
 const comments = ref<EditorComment[]>([])
+const snapshots = ref<HistorySnapshot[]>([])
 const selectedRange = ref<SelectedQuoteRange | null>(null)
 const activeCommentId = ref<string | null>(null)
 const activeCommentRange = ref<CommentHighlightRange | null>(null)
+const activeSnapshotId = ref<string | null>(null)
 const commentItemRefs = new Map<string, HTMLElement>()
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
@@ -216,6 +232,7 @@ let syncingFromPane = false
 let syncingFromEditor = false
 let rebuildVersion = 0
 let copyTimer: ReturnType<typeof setTimeout> | null = null
+let suppressCommentAutoSelect = false
 
 const commentToolbarIcon = `
   <svg
@@ -361,6 +378,15 @@ const paletteActions = computed<PaletteAction[]>(() => {
       run: () => {
         disconnectCollab()
       },
+    },
+    {
+      id: 'snapshot-create',
+      group: 'History',
+      label: '创建手动快照',
+      description: '保存当前文档与评论状态，方便后续还原',
+      run: () => {
+        createHistorySnapshot()
+      },
     }
   )
 
@@ -381,7 +407,12 @@ const activeComment = computed(() =>
   comments.value.find((item) => item.id === activeCommentId.value) ?? null
 )
 
+const activeSnapshot = computed(() =>
+  activeSnapshotId.value ? findSnapshot(snapshots.value, activeSnapshotId.value) ?? null : null
+)
+
 const commentCountLabel = computed(() => `${comments.value.length} 条评论`)
+const snapshotCountLabel = computed(() => `${snapshots.value.length} 条历史记录`)
 
 const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
 
@@ -415,6 +446,86 @@ function setCommentItemRef(id: string, element: unknown) {
 function scrollCommentIntoView(id: string) {
   const element = commentItemRefs.get(id)
   element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
+function isEditorCommentRecord(value: unknown): value is EditorComment {
+  if (!value || typeof value !== 'object') return false
+
+  const item = value as EditorComment
+  return (
+    typeof item.id === 'string' &&
+    typeof item.text === 'string' &&
+    typeof item.quote === 'string' &&
+    typeof item.from === 'number' &&
+    typeof item.to === 'number' &&
+    typeof item.author === 'string' &&
+    typeof item.createdAt === 'number'
+  )
+}
+
+function getCurrentMarkdownSnapshot() {
+  if (!crepe) return markdown.value
+
+  try {
+    return crepe.getMarkdown()
+  } catch {
+    return markdown.value
+  }
+}
+
+function serializeSnapshotPayload() {
+  const latestMarkdown = getCurrentMarkdownSnapshot()
+
+  if (latestMarkdown !== markdown.value) {
+    markdown.value = latestMarkdown
+  }
+
+  const payload: SnapshotPayload = {
+    markdown: latestMarkdown,
+    comments: comments.value,
+  }
+
+  return JSON.stringify(payload)
+}
+
+function parseSnapshotPayload(content: string): SnapshotPayload {
+  try {
+    const parsed = JSON.parse(content) as Partial<SnapshotPayload>
+    if (typeof parsed.markdown === 'string') {
+      return {
+        markdown: parsed.markdown,
+        comments: Array.isArray(parsed.comments)
+          ? parsed.comments.filter(isEditorCommentRecord)
+          : [],
+      }
+    }
+  } catch {
+    // Backward compatibility: treat old snapshot content as raw markdown only.
+  }
+
+  return {
+    markdown: content,
+    comments: [],
+  }
+}
+
+function getSnapshotPreview(snapshot: HistorySnapshot) {
+  const { markdown: snapshotMarkdown } = parseSnapshotPayload(snapshot.content)
+  const lines = snapshotMarkdown
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) return '空白快照'
+  if (lines.length === 1) return lines[0]
+
+  const firstLine = lines[0]
+  const lastLine = lines[lines.length - 1]
+  return firstLine === lastLine ? firstLine : `${firstLine} / ${lastLine}`
+}
+
+function getDefaultSnapshotLabel() {
+  return `手动快照 ${snapshots.value.length + 1}`
 }
 
 function findCommentByPosition(pos: number) {
@@ -541,6 +652,46 @@ function beginCommentFromSelection() {
   })
 }
 
+function createHistorySnapshot() {
+  const label = snapshotLabel.value.trim() || getDefaultSnapshotLabel()
+  const next = createSnapshot(snapshots.value, {
+    label,
+    content: serializeSnapshotPayload(),
+  })
+
+  snapshots.value = next
+  activeSnapshotId.value = next[0]?.id ?? null
+  snapshotLabel.value = ''
+}
+
+async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
+  const payload = parseSnapshotPayload(snapshot.content)
+  activeSnapshotId.value = snapshot.id
+  snapshotLabel.value = snapshot.label
+  commentDraft.value = ''
+  selectedRange.value = null
+  suppressCommentAutoSelect = true
+  activeCommentId.value = null
+  activeCommentRange.value = null
+  comments.value = payload.comments
+  await syncEditorMarkdown(payload.markdown)
+
+  suppressCommentAutoSelect = false
+  refreshCommentHighlight()
+}
+
+async function selectHistorySnapshot(snapshot: HistorySnapshot) {
+  await restoreHistorySnapshot(snapshot)
+}
+
+function deleteHistorySnapshot(id: string) {
+  snapshots.value = removeSnapshot(snapshots.value, id)
+
+  if (activeSnapshotId.value === id) {
+    activeSnapshotId.value = snapshots.value[0]?.id ?? null
+  }
+}
+
 function deleteComment(id: string) {
   comments.value = removeComment(comments.value, id)
 
@@ -639,8 +790,23 @@ async function rebuildEditor(seed?: string) {
 async function applyMarkdownFromPane() {
   if (!crepe || syncingFromEditor) return
 
+  await syncEditorMarkdown(markdown.value)
+}
+
+async function syncEditorMarkdown(nextMarkdown: string) {
+  if (!crepe || syncingFromEditor) return
+
   syncingFromPane = true
-  crepe.editor.action(replaceAll(markdown.value, true))
+  markdown.value = nextMarkdown
+
+  try {
+    crepe.editor.action((ctx) => {
+      ctx.get(collabServiceCtx).bindDoc(ydoc).applyTemplate(nextMarkdown, () => true)
+    })
+  } catch {
+    crepe.editor.action(replaceAll(nextMarkdown, true))
+  }
+
   syncingFromPane = false
   syncSelectionState()
   updateActiveCommentRange()
@@ -763,6 +929,11 @@ watch(comments, (items) => {
     return
   }
 
+  if (suppressCommentAutoSelect) {
+    refreshCommentHighlight()
+    return
+  }
+
   if (!items.some((item) => item.id === activeCommentId.value)) {
     activeCommentId.value = items[0].id
   }
@@ -817,9 +988,9 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="page milk-playground-page">
-    <h1>Milkdown Playground（评论增强版）</h1>
+    <h1>Milkdown Playground（评论 + 历史记录版）</h1>
     <p class="subtitle">
-      保留 Milkdown 单方案，并补齐飞书式评论流程：选中文本、添加评论、锚点高亮、评论列表定位。
+      保留 Milkdown 单方案，并补齐飞书式评论与手动历史记录：选中文本评论、锚点定位、创建快照、按版本还原。
     </p>
 
     <div class="toolbar">
@@ -880,67 +1051,150 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <aside class="panel comments-panel">
-        <div class="comments-panel-head">
-          <div>
-            <h3>评论</h3>
-            <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
-          </div>
-          <span class="comments-badge" :data-active="Boolean(activeComment)">
-            {{ activeComment ? '已定位' : '未选中' }}
-          </span>
-        </div>
-
-        <blockquote class="selection-quote" :class="{ empty: !selectedRange }">
-          {{ selectedQuotePreview }}
-        </blockquote>
-
-        <textarea
-          ref="commentInputRef"
-          v-model="commentDraft"
-          class="comment-input"
-          rows="4"
-          placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
-        ></textarea>
-
-        <div class="row-actions comment-actions">
-          <button
-            type="button"
-            class="btn"
-            :disabled="!selectedRange || !commentDraft.trim()"
-            @click="submitComment"
-          >
-            添加评论
-          </button>
-          <span class="panel-tip">点击列表项可回到正文锚点</span>
-        </div>
-
-        <ul v-if="comments.length" class="panel-list comments-list">
-          <li
-            v-for="item in comments"
-            :key="item.id"
-            :ref="(element) => setCommentItemRef(item.id, element)"
-            class="panel-item comment-card"
-            :class="{ active: item.id === activeCommentId }"
-            @click="focusComment(item)"
-          >
-            <div class="panel-item-head">
-              <strong>{{ item.author }}</strong>
-              <span>{{ formatTime(item.createdAt) }}</span>
+      <aside class="play-side-panels">
+        <section class="panel comments-panel">
+          <div class="comments-panel-head">
+            <div>
+              <h3>评论</h3>
+              <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
             </div>
-            <p class="comment-text">{{ item.text }}</p>
-            <p class="panel-item-quote">“{{ item.quote }}”</p>
-            <div class="row-actions">
-              <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>
-              <button type="button" class="btn xs ghost" @click.stop="deleteComment(item.id)">
-                删除
+            <div class="panel-head-actions">
+              <span class="comments-badge" :data-active="Boolean(activeComment)">
+                {{ activeComment ? '已定位' : '未选中' }}
+              </span>
+              <button
+                type="button"
+                class="panel-toggle"
+                :aria-expanded="!commentsCollapsed"
+                @click="commentsCollapsed = !commentsCollapsed"
+              >
+                {{ commentsCollapsed ? '展开' : '收起' }}
               </button>
             </div>
-          </li>
-        </ul>
-        <p v-else class="panel-tip comments-empty">
-          还没有评论。先在左侧选中一段文本，再输入评论内容。
-        </p>
+          </div>
+
+          <div v-show="!commentsCollapsed" class="panel-section-body">
+            <blockquote class="selection-quote" :class="{ empty: !selectedRange }">
+              {{ selectedQuotePreview }}
+            </blockquote>
+
+            <textarea
+              ref="commentInputRef"
+              v-model="commentDraft"
+              class="comment-input"
+              rows="4"
+              placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
+            ></textarea>
+
+            <div class="row-actions comment-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="!selectedRange || !commentDraft.trim()"
+                @click="submitComment"
+              >
+                添加评论
+              </button>
+              <span class="panel-tip">点击列表项可回到正文锚点</span>
+            </div>
+
+            <ul v-if="comments.length" class="panel-list comments-list">
+              <li
+                v-for="item in comments"
+                :key="item.id"
+                :ref="(element) => setCommentItemRef(item.id, element)"
+                class="panel-item comment-card"
+                :class="{ active: item.id === activeCommentId }"
+                @click="focusComment(item)"
+              >
+                <div class="panel-item-head">
+                  <strong>{{ item.author }}</strong>
+                  <span>{{ formatTime(item.createdAt) }}</span>
+                </div>
+                <p class="comment-text">{{ item.text }}</p>
+                <p class="panel-item-quote">“{{ item.quote }}”</p>
+                <div class="row-actions">
+                  <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>
+                  <button type="button" class="btn xs ghost" @click.stop="deleteComment(item.id)">
+                    删除
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="panel-tip comments-empty">
+              还没有评论。先在左侧选中一段文本，再输入评论内容。
+            </p>
+          </div>
+        </section>
+
+        <section class="panel history-panel">
+          <div class="history-panel-head">
+            <div>
+              <h3>历史记录</h3>
+              <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片即可还原左侧文档</p>
+            </div>
+            <div class="panel-head-actions">
+              <span class="history-badge" :data-active="Boolean(activeSnapshot)">
+                {{ activeSnapshot ? '当前版本' : '未选中' }}
+              </span>
+              <button
+                type="button"
+                class="panel-toggle"
+                :aria-expanded="!historyCollapsed"
+                @click="historyCollapsed = !historyCollapsed"
+              >
+                {{ historyCollapsed ? '展开' : '收起' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-show="!historyCollapsed" class="panel-section-body">
+            <input
+              v-model="snapshotLabel"
+              class="mini-input"
+              type="text"
+              placeholder="例如：补充结论前 / 发布前检查"
+              @keydown.enter.prevent="createHistorySnapshot"
+            />
+
+            <div class="row-actions history-actions">
+              <button type="button" class="btn" @click="createHistorySnapshot">创建快照</button>
+              <span class="panel-tip">默认会保存当前文档和评论状态</span>
+            </div>
+
+            <ul v-if="snapshots.length" class="panel-list history-list">
+              <li
+                v-for="item in snapshots"
+                :key="item.id"
+                class="panel-item history-card"
+                :class="{ active: item.id === activeSnapshotId }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="item.id === activeSnapshotId"
+                @click="void selectHistorySnapshot(item)"
+                @keydown.enter.prevent="void selectHistorySnapshot(item)"
+                @keydown.space.prevent="void selectHistorySnapshot(item)"
+              >
+                <div class="panel-item-head">
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ formatTime(item.createdAt) }}</span>
+                </div>
+                <p class="history-preview">{{ getSnapshotPreview(item) }}</p>
+                <div class="row-actions">
+                  <button type="button" class="btn xs" @click.stop="restoreHistorySnapshot(item)">
+                    还原
+                  </button>
+                  <button type="button" class="btn xs ghost" @click.stop="deleteHistorySnapshot(item.id)">
+                    删除
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="panel-tip comments-empty">
+              还没有历史记录。手动创建一个快照后，就可以随时把文档还原到对应版本。
+            </p>
+          </div>
+        </section>
       </aside>
 
       <section class="play-pane play-pane-markdown">
@@ -974,7 +1228,7 @@ onBeforeUnmount(() => {
     </section>
 
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 
