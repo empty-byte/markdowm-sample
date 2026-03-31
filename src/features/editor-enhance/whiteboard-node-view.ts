@@ -153,22 +153,23 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
   }
 
   const meta = document.createElement('div')
-  meta.className = 'whiteboard-meta'
+  meta.className = 'embed-card-meta'
 
   const titleEl = document.createElement('div')
-  titleEl.className = 'whiteboard-title'
+  titleEl.className = 'embed-card-title'
   titleEl.textContent = widget.title
 
   const idEl = document.createElement('div')
-  idEl.className = 'whiteboard-id'
+  idEl.className = 'embed-card-subtitle'
   idEl.textContent = widget.id
+  idEl.title = widget.id
 
   meta.appendChild(titleEl)
   meta.appendChild(idEl)
 
+  wrapper.appendChild(meta)
   wrapper.appendChild(actions)
   wrapper.appendChild(previewWrap)
-  wrapper.appendChild(meta)
 
   return wrapper
 }

@@ -1182,6 +1182,31 @@ code {
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
+.embed-inline-card .embed-card-meta {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 10px 136px 10px 12px;
+  border-bottom: 1px solid #e2ebf6;
+  background: linear-gradient(180deg, #fbfdff, #f4f8ff);
+}
+
+.embed-inline-card .embed-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a4058;
+  line-height: 1.3;
+}
+
+.embed-inline-card .embed-card-subtitle {
+  font-size: 11px;
+  color: #73839a;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .embed-inline-card:hover .embed-card-actions,
 .embed-inline-card:focus-within .embed-card-actions {
   opacity: 1;
@@ -1255,7 +1280,6 @@ code {
   width: 100%;
   min-height: 220px;
   background: linear-gradient(180deg, #f8fbff, #eff5fd);
-  border-top: 1px solid #e2ebf6;
   border-bottom: 1px solid #e2ebf6;
   display: grid;
   place-items: center;
@@ -1275,26 +1299,6 @@ code {
   color: #5d7087;
   font-size: 13px;
   text-align: center;
-}
-
-.whiteboard-inline-card .whiteboard-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  background: #fff;
-}
-
-.whiteboard-inline-card .whiteboard-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #2a4058;
-}
-
-.whiteboard-inline-card .whiteboard-id {
-  font-size: 11px;
-  color: #73839a;
 }
 
 .whiteboard-token-hidden {

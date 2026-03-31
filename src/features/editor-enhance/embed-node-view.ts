@@ -87,6 +87,16 @@ function stopAction(event: MouseEvent): void {
   event.stopPropagation()
 }
 
+function formatEmbedSourceLabel(sourceUrl: string): string {
+  try {
+    const parsed = new URL(sourceUrl)
+    const pathname = parsed.pathname === '/' ? '' : parsed.pathname
+    return `${parsed.hostname}${pathname}`
+  } catch {
+    return sourceUrl
+  }
+}
+
 function createIframeWidget(widget: EmbedWidget, view: EditorView): HTMLElement {
   const wrapper = document.createElement('div')
   wrapper.className = 'embed-inline-card'
@@ -140,6 +150,21 @@ function createIframeWidget(widget: EmbedWidget, view: EditorView): HTMLElement 
   actions.appendChild(editBtn)
   actions.appendChild(deleteBtn)
 
+  const meta = document.createElement('div')
+  meta.className = 'embed-card-meta'
+
+  const titleEl = document.createElement('div')
+  titleEl.className = 'embed-card-title'
+  titleEl.textContent = widget.title || '内嵌网页'
+
+  const sourceEl = document.createElement('div')
+  sourceEl.className = 'embed-card-subtitle'
+  sourceEl.textContent = formatEmbedSourceLabel(widget.sourceUrl)
+  sourceEl.title = widget.sourceUrl
+
+  meta.appendChild(titleEl)
+  meta.appendChild(sourceEl)
+
   const iframeWrap = document.createElement('div')
   iframeWrap.className = 'embed-iframe-wrap'
   iframeWrap.style.width = '100%'
@@ -158,6 +183,7 @@ function createIframeWidget(widget: EmbedWidget, view: EditorView): HTMLElement 
 
   iframeWrap.appendChild(iframe)
 
+  wrapper.appendChild(meta)
   wrapper.appendChild(actions)
   wrapper.appendChild(iframeWrap)
 
