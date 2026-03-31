@@ -19,6 +19,7 @@ interface WhiteboardWidget {
   source: string
   title: string
   previewUrl: string
+  updatedAt: number
 }
 
 const whiteboardTokenPattern = /!\[whiteboard:([^\]]*)\]\((whiteboard:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
@@ -42,6 +43,7 @@ function collectWhiteboardWidgets(doc: ProsemirrorNode): WhiteboardWidget[] {
         source,
         title,
         previewUrl: stored?.previewUrl ?? '',
+        updatedAt: stored?.updatedAt ?? 0,
       })
       return
     }
@@ -71,6 +73,7 @@ function collectWhiteboardWidgets(doc: ProsemirrorNode): WhiteboardWidget[] {
         source,
         title,
         previewUrl: stored?.previewUrl ?? '',
+        updatedAt: stored?.updatedAt ?? 0,
       })
     }
   })
@@ -95,19 +98,6 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
 
   const actions = document.createElement('div')
   actions.className = 'embed-card-actions'
-
-  const openBtn = document.createElement('a')
-  openBtn.className = 'embed-action-btn'
-  openBtn.textContent = '打开'
-  if (widget.previewUrl) {
-    openBtn.href = widget.previewUrl
-    openBtn.target = '_blank'
-    openBtn.rel = 'noopener noreferrer'
-  } else {
-    openBtn.classList.add('is-disabled')
-    openBtn.removeAttribute('href')
-  }
-  openBtn.addEventListener('mousedown', stopMouseDown)
 
   const editBtn = document.createElement('button')
   editBtn.type = 'button'
@@ -143,7 +133,6 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
     }
   })
 
-  actions.appendChild(openBtn)
   actions.appendChild(editBtn)
   actions.appendChild(deleteBtn)
 
@@ -212,7 +201,7 @@ export function createWhiteboardNodeViewPlugin() {
           decorations.push(
             Decoration.widget(widget.to, (view: EditorView) => createWhiteboardWidget(widget, view), {
               side: -1,
-              key: `whiteboard-${widget.kind}-${widget.from}-${widget.to}`,
+              key: `whiteboard-${widget.kind}-${widget.from}-${widget.to}-${widget.updatedAt}`,
             })
           )
         }
