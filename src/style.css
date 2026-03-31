@@ -1165,40 +1165,70 @@ code {
 
 .embed-inline-card .embed-card-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(185, 204, 224, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(28, 52, 77, 0.14);
+  backdrop-filter: blur(6px);
   z-index: 20;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s;
+  transform: translateY(-2px) scale(0.98);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .embed-inline-card:hover .embed-card-actions,
 .embed-inline-card:focus-within .embed-card-actions {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(0) scale(1);
 }
 
 .embed-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid #cbd6e5;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #28506f;
+  height: 26px;
+  min-width: 42px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2c4a67;
   font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   text-decoration: none;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
 }
 
 .embed-action-btn:hover {
-  border-color: #8eb3d6;
-  color: #1e4d76;
+  border-color: #a9c5e6;
+  background: #f2f7ff;
+  color: #174a85;
+}
+
+.embed-action-btn:focus-visible {
+  outline: 2px solid #81a8d4;
+  outline-offset: 1px;
+}
+
+.embed-action-btn.danger {
+  color: #b2474c;
+  background: #fff7f7;
+  border-color: #f2d1d4;
+}
+
+.embed-action-btn.danger:hover {
+  color: #962f34;
+  border-color: #e8aab0;
+  background: #ffeef0;
 }
 
 .embed-inline-card .embed-iframe-wrap {
@@ -1209,4 +1239,5 @@ code {
 .embed-token-hidden {
   display: none;
 }
+
 

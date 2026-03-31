@@ -23,6 +23,8 @@ import {
 import {
   isValidEmbedUrl,
   createEmbedToken,
+  EMBED_EDIT_REQUEST_EVENT,
+  type EmbedEditRequestDetail,
 } from '../features/editor-enhance/embeds'
 import createEmbedNodeViewPlugin from '../features/editor-enhance/embed-node-view'
 
@@ -220,6 +222,8 @@ const activeSnapshotId = ref<string | null>(null)
 const commentItemRefs = new Map<string, HTMLElement>()
 
 const embedDialogVisible = ref(false)
+const embedDialogMode = ref<'insert' | 'edit'>('insert')
+const embedEditTarget = ref<EmbedEditRequestDetail | null>(null)
 const embedUrlInput = ref('')
 const embedTitleInput = ref('')
 
@@ -459,6 +463,8 @@ const embedUrlValid = computed(() => {
   const url = embedUrlInput.value.trim()
   return url.length > 0 && isValidEmbedUrl(url)
 })
+const embedDialogTitle = computed(() => (embedDialogMode.value === 'edit' ? '编辑内嵌网页' : '插入内嵌网页'))
+const embedDialogConfirmText = computed(() => (embedDialogMode.value === 'edit' ? '保存' : '插入'))
 
 function getFeatureFlags() {
   return crepeFeatureItems.reduce((acc, item) => {
@@ -1044,15 +1050,57 @@ function onPaletteKeydown(event: KeyboardEvent) {
 // ── Embed dialog ──
 
 function openEmbedDialog() {
+  embedDialogMode.value = 'insert'
+  embedEditTarget.value = null
   embedDialogVisible.value = true
   embedUrlInput.value = ''
   embedTitleInput.value = ''
 }
 
+function openEmbedEditDialog(detail: EmbedEditRequestDetail) {
+  embedDialogMode.value = 'edit'
+  embedEditTarget.value = detail
+  embedDialogVisible.value = true
+  embedUrlInput.value = detail.sourceUrl
+  embedTitleInput.value = detail.title
+}
+
 function closeEmbedDialog() {
   embedDialogVisible.value = false
+  embedDialogMode.value = 'insert'
+  embedEditTarget.value = null
   embedUrlInput.value = ''
   embedTitleInput.value = ''
+}
+
+function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: string) {
+  if (!crepe) return
+  const token = createEmbedToken(title, url)
+
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const { state } = view
+    let tr = state.tr
+
+    if (detail.kind === 'token') {
+      tr = tr.insertText(token, detail.from, detail.to)
+    } else {
+      const imageNode = state.doc.nodeAt(detail.from)
+      if (imageNode?.type.name === 'image') {
+        tr = tr.setNodeMarkup(detail.from, undefined, {
+          ...imageNode.attrs,
+          src: url,
+          alt: `embed:${title}`,
+          title,
+        })
+      } else {
+        tr = tr.insertText(token, detail.from, detail.to)
+      }
+    }
+
+    view.dispatch(tr)
+    view.focus()
+  })
 }
 
 function confirmEmbed() {
@@ -1060,6 +1108,14 @@ function confirmEmbed() {
   if (!isValidEmbedUrl(url)) return
 
   const title = embedTitleInput.value.trim() || '内嵌网页'
+  const target = embedEditTarget.value
+
+  if (embedDialogMode.value === 'edit' && target) {
+    applyEmbedEdit(target, title, url)
+    closeEmbedDialog()
+    return
+  }
+
   const token = createEmbedToken(title, url)
 
   if (crepe) {
@@ -1073,6 +1129,12 @@ function confirmEmbed() {
   }
 
   closeEmbedDialog()
+}
+
+function onEmbedEditRequest(event: Event) {
+  const customEvent = event as CustomEvent<EmbedEditRequestDetail>
+  if (!customEvent.detail) return
+  openEmbedEditDialog(customEvent.detail)
 }
 
 function onGlobalKeydown(event: KeyboardEvent) {
@@ -1146,6 +1208,7 @@ watch(filteredPaletteActions, (items) => {
 
 onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeydown)
+  window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   yComments.observe(syncCommentsFromSharedState)
   ySnapshots.observe(syncSnapshotsFromSharedState)
   provider.awareness?.on('change', refreshCollaborators)
@@ -1157,6 +1220,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
+  window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
 
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
@@ -1480,7 +1544,7 @@ onBeforeUnmount(() => {
   <!-- Embed URL dialog -->
   <div v-if="embedDialogVisible" class="command-menu-mask" @click="closeEmbedDialog">
     <div class="embed-dialog" @click.stop>
-      <div class="embed-dialog-title">插入内嵌网页</div>
+      <div class="embed-dialog-title">{{ embedDialogTitle }}</div>
       <div class="embed-dialog-body">
         <label class="embed-field">
           <span>网页地址（仅 HTTPS）</span>
@@ -1510,10 +1574,11 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div class="embed-dialog-actions">
-        <button type="button" class="btn" :disabled="!embedUrlValid" @click="confirmEmbed">插入</button>
+        <button type="button" class="btn" :disabled="!embedUrlValid" @click="confirmEmbed">{{ embedDialogConfirmText }}</button>
         <button type="button" class="btn ghost" @click="closeEmbedDialog">取消</button>
       </div>
     </div>
   </div>
 </template>
+
 

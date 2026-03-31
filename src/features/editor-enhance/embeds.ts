@@ -1,4 +1,4 @@
-export interface EmbedBlock {
+﻿export interface EmbedBlock {
   id: string
   sourceUrl: string
   provider: EmbedProvider
@@ -133,9 +133,29 @@ export function createEmbedToken(title: string, url: string): string {
  */
 export function getProviderLabel(provider: EmbedProvider): string {
   switch (provider) {
-    case 'youtube': return 'YouTube'
-    case 'bilibili': return 'Bilibili'
-    case 'figma': return 'Figma'
-    default: return '网页'
+    case 'youtube':
+      return 'YouTube'
+    case 'bilibili':
+      return 'Bilibili'
+    case 'figma':
+      return 'Figma'
+    default:
+      return '网页'
   }
+}
+
+export type EmbedSourceKind = 'image' | 'token'
+
+export interface EmbedEditRequestDetail {
+  kind: EmbedSourceKind
+  from: number
+  to: number
+  sourceUrl: string
+  title: string
+}
+
+export const EMBED_EDIT_REQUEST_EVENT = 'milkdown:embed-edit-request'
+
+export function emitEmbedEditRequest(detail: EmbedEditRequestDetail): void {
+  window.dispatchEvent(new CustomEvent<EmbedEditRequestDetail>(EMBED_EDIT_REQUEST_EVENT, { detail }))
 }

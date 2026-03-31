@@ -2,11 +2,15 @@
 import { Decoration, DecorationSet } from '@milkdown/prose/view'
 import type { EditorView } from '@milkdown/prose/view'
 import type { Node as ProsemirrorNode } from '@milkdown/prose/model'
-import { isValidEmbedUrl, detectProvider, toEmbedUrl } from './embeds'
+import {
+  isValidEmbedUrl,
+  detectProvider,
+  toEmbedUrl,
+  emitEmbedEditRequest,
+  type EmbedSourceKind,
+} from './embeds'
 
 export const embedNodeViewPluginKey = new PluginKey('embedNodeView')
-
-type EmbedSourceKind = 'image' | 'token'
 
 interface EmbedWidget {
   from: number
@@ -14,6 +18,7 @@ interface EmbedWidget {
   kind: EmbedSourceKind
   sourceUrl: string
   embedUrl: string
+  title: string
 }
 
 const embedTokenPattern = /!\[embed:([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
@@ -28,6 +33,7 @@ function collectEmbedWidgets(doc: ProsemirrorNode): EmbedWidget[] {
 
       const provider = detectProvider(sourceUrl)
       const embedUrl = toEmbedUrl(sourceUrl, provider)
+      const title = String(node.attrs.alt).slice('embed:'.length).trim() || '内嵌网页'
 
       results.push({
         from: pos,
@@ -35,6 +41,7 @@ function collectEmbedWidgets(doc: ProsemirrorNode): EmbedWidget[] {
         kind: 'image',
         sourceUrl,
         embedUrl,
+        title,
       })
       return
     }
@@ -47,6 +54,7 @@ function collectEmbedWidgets(doc: ProsemirrorNode): EmbedWidget[] {
 
     while ((match = embedTokenPattern.exec(node.text)) !== null) {
       const token = match[0]
+      const title = (match[1] ?? '').trim() || '内嵌网页'
       const sourceUrl = match[2] ?? ''
       if (!isValidEmbedUrl(sourceUrl)) continue
 
@@ -61,6 +69,7 @@ function collectEmbedWidgets(doc: ProsemirrorNode): EmbedWidget[] {
         kind: 'token',
         sourceUrl,
         embedUrl,
+        title,
       })
     }
   })
@@ -68,7 +77,17 @@ function collectEmbedWidgets(doc: ProsemirrorNode): EmbedWidget[] {
   return results
 }
 
-function createIframeWidget(widget: EmbedWidget): HTMLElement {
+function stopMouseDown(event: MouseEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function stopAction(event: MouseEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function createIframeWidget(widget: EmbedWidget, view: EditorView): HTMLElement {
   const wrapper = document.createElement('div')
   wrapper.className = 'embed-inline-card'
   wrapper.contentEditable = 'false'
@@ -82,12 +101,44 @@ function createIframeWidget(widget: EmbedWidget): HTMLElement {
   openBtn.href = widget.sourceUrl
   openBtn.target = '_blank'
   openBtn.rel = 'noopener noreferrer'
-  openBtn.addEventListener('mousedown', (event) => {
-    event.preventDefault()
-    event.stopPropagation()
+  openBtn.addEventListener('mousedown', stopMouseDown)
+
+  const editBtn = document.createElement('button')
+  editBtn.type = 'button'
+  editBtn.className = 'embed-action-btn'
+  editBtn.textContent = '编辑'
+  editBtn.addEventListener('mousedown', stopMouseDown)
+  editBtn.addEventListener('click', (event) => {
+    stopAction(event)
+    emitEmbedEditRequest({
+      kind: widget.kind,
+      from: widget.from,
+      to: widget.to,
+      sourceUrl: widget.sourceUrl,
+      title: widget.title,
+    })
+    view.focus()
+  })
+
+  const deleteBtn = document.createElement('button')
+  deleteBtn.type = 'button'
+  deleteBtn.className = 'embed-action-btn danger'
+  deleteBtn.textContent = '删除'
+  deleteBtn.addEventListener('mousedown', stopMouseDown)
+  deleteBtn.addEventListener('click', (event) => {
+    stopAction(event)
+    try {
+      const tr = view.state.tr.delete(widget.from, widget.to)
+      view.dispatch(tr)
+      view.focus()
+    } catch {
+      view.focus()
+    }
   })
 
   actions.appendChild(openBtn)
+  actions.appendChild(editBtn)
+  actions.appendChild(deleteBtn)
 
   const iframeWrap = document.createElement('div')
   iframeWrap.className = 'embed-iframe-wrap'
@@ -96,7 +147,7 @@ function createIframeWidget(widget: EmbedWidget): HTMLElement {
 
   const iframe = document.createElement('iframe')
   iframe.src = widget.embedUrl
-  iframe.title = '内嵌网页'
+  iframe.title = widget.title
   iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups')
   iframe.setAttribute('loading', 'lazy')
   iframe.setAttribute('referrerpolicy', 'no-referrer')
@@ -139,7 +190,7 @@ export function createEmbedNodeViewPlugin() {
           }
 
           decorations.push(
-            Decoration.widget(widget.to, (_view: EditorView) => createIframeWidget(widget), {
+            Decoration.widget(widget.to, (view: EditorView) => createIframeWidget(widget, view), {
               side: -1,
               key: `embed-${widget.kind}-${widget.from}-${widget.to}`,
             })
