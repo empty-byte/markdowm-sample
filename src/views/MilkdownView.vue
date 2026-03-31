@@ -20,6 +20,15 @@ import {
   removeSnapshot,
   type HistorySnapshot,
 } from '../features/editor-enhance/history'
+import {
+  isValidEmbedUrl,
+  detectProvider,
+  toEmbedUrl,
+  getProviderLabel,
+  parseEmbedBlocks,
+  createEmbedToken,
+  type EmbedBlock,
+} from '../features/editor-enhance/embeds'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -213,6 +222,13 @@ const activeCommentId = ref<string | null>(null)
 const activeCommentRange = ref<CommentHighlightRange | null>(null)
 const activeSnapshotId = ref<string | null>(null)
 const commentItemRefs = new Map<string, HTMLElement>()
+
+const embedDialogVisible = ref(false)
+const embedUrlInput = ref('')
+const embedTitleInput = ref('')
+const embedBlocks = ref<EmbedBlock[]>([])
+const editingEmbedBlock = ref<EmbedBlock | null>(null)
+
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
   crepeFeatureItems.reduce((acc, item) => {
@@ -442,6 +458,13 @@ const collaboratorCountLabel = computed(() => {
 })
 
 const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
+
+const parsedEmbedBlocks = computed(() => parseEmbedBlocks(markdown.value))
+
+const embedUrlValid = computed(() => {
+  const url = embedUrlInput.value.trim()
+  return url.length > 0 && isValidEmbedUrl(url)
+})
 
 function getFeatureFlags() {
   return crepeFeatureItems.reduce((acc, item) => {
@@ -834,6 +857,18 @@ async function rebuildEditor(seed?: string) {
       [CrepeFeature.Placeholder]: {
         text: 'Type / to open slash menu...',
       },
+      [CrepeFeature.BlockEdit]: {
+        buildMenu: (builder) => {
+          const advancedGroup = builder.getGroup('advanced')
+          advancedGroup.addItem('embedWeb', {
+            label: '内嵌网页',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+            onRun: () => {
+              openEmbedDialog()
+            },
+          })
+        },
+      },
       [CrepeFeature.Toolbar]: {
         buildToolbar: (builder) => {
           builder.getGroup('function').addItem('comment', {
@@ -1009,6 +1044,105 @@ function onPaletteKeydown(event: KeyboardEvent) {
   event.preventDefault()
   const current = filteredPaletteActions.value[paletteIndex.value]
   if (current) runPaletteAction(current)
+}
+
+// ── Embed dialog ──
+
+function openEmbedDialog() {
+  editingEmbedBlock.value = null
+  embedDialogVisible.value = true
+  embedUrlInput.value = ''
+  embedTitleInput.value = ''
+}
+
+function closeEmbedDialog() {
+  embedDialogVisible.value = false
+  embedUrlInput.value = ''
+  embedTitleInput.value = ''
+  editingEmbedBlock.value = null
+}
+
+function confirmEmbed() {
+  const url = embedUrlInput.value.trim()
+  if (!isValidEmbedUrl(url)) return
+
+  const title = embedTitleInput.value.trim() || '内嵌网页'
+  const provider = detectProvider(url)
+  const embedUrl = toEmbedUrl(url, provider)
+  const editing = editingEmbedBlock.value
+
+  if (editing) {
+    // Update existing block
+    const oldToken = createEmbedToken(editing.title, editing.sourceUrl)
+    const newToken = createEmbedToken(title, url)
+
+    editing.sourceUrl = url
+    editing.provider = provider
+    editing.embedUrl = embedUrl
+    editing.title = title
+    editing.updatedAt = Date.now()
+
+    // Replace token in markdown
+    if (markdown.value.includes(oldToken)) {
+      const nextMarkdown = markdown.value.replace(oldToken, newToken)
+      void syncEditorMarkdown(nextMarkdown)
+    }
+  } else {
+    // Create new block
+    const block: EmbedBlock = {
+      id: `embed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      sourceUrl: url,
+      provider,
+      embedUrl,
+      status: 'ready',
+      title,
+      width: 800,
+      height: 450,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    embedBlocks.value = [block, ...embedBlocks.value]
+
+    // Insert embed token into the editor
+    const token = createEmbedToken(title, url)
+    if (crepe) {
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx)
+        const { state } = view
+        const tr = state.tr.insertText(`\n${token}\n`, state.selection.from)
+        view.dispatch(tr)
+        view.focus()
+      })
+    }
+  }
+
+  closeEmbedDialog()
+}
+
+function removeEmbedBlock(id: string) {
+  const block = embedBlocks.value.find((b) => b.id === id)
+  if (!block) return
+
+  embedBlocks.value = embedBlocks.value.filter((b) => b.id !== id)
+
+  // Also remove the token from markdown
+  const token = createEmbedToken(block.title, block.sourceUrl)
+  if (markdown.value.includes(token)) {
+    const nextMarkdown = markdown.value.replace(`\n${token}\n`, '\n').replace(token, '')
+    void syncEditorMarkdown(nextMarkdown)
+  }
+}
+
+function editEmbedBlock(block: EmbedBlock) {
+  editingEmbedBlock.value = block
+  embedUrlInput.value = block.sourceUrl
+  embedTitleInput.value = block.title
+  embedDialogVisible.value = true
+}
+
+function openEmbedSource(url: string) {
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 function onGlobalKeydown(event: KeyboardEvent) {
@@ -1193,6 +1327,41 @@ onBeforeUnmount(() => {
         </header>
         <div class="play-editor-shell" :class="activeThemeClass">
           <div ref="host" class="playground-host"></div>
+        </div>
+
+        <!-- Embed blocks rendered inline below editor -->
+        <div v-if="embedBlocks.length || parsedEmbedBlocks.length" class="embed-blocks-area">
+          <div
+            v-for="block in embedBlocks"
+            :key="block.id"
+            class="embed-card"
+            :class="{ invalid: block.status !== 'ready' }"
+          >
+            <div class="embed-card-header">
+              <span class="embed-provider-badge">{{ getProviderLabel(block.provider) }}</span>
+              <span class="embed-card-title">{{ block.title }}</span>
+              <div class="embed-card-actions">
+                <button type="button" class="btn xs" @click="editEmbedBlock(block)">编辑</button>
+                <button type="button" class="btn xs" @click="openEmbedSource(block.sourceUrl)">打开</button>
+                <button type="button" class="btn xs ghost" @click="removeEmbedBlock(block.id)">删除</button>
+              </div>
+            </div>
+            <div v-if="block.status === 'ready'" class="embed-iframe-wrap">
+              <iframe
+                :src="block.embedUrl"
+                :title="block.title"
+                :width="block.width"
+                :height="block.height"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                allowfullscreen
+              ></iframe>
+            </div>
+            <div v-else class="embed-error">
+              <p>无法嵌入此链接（仅支持 HTTPS）</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1409,6 +1578,45 @@ onBeforeUnmount(() => {
         </li>
       </ul>
       <p v-if="filteredPaletteActions.length === 0" class="panel-tip">没有匹配功能</p>
+    </div>
+  </div>
+
+  <!-- Embed URL dialog -->
+  <div v-if="embedDialogVisible" class="command-menu-mask" @click="closeEmbedDialog">
+    <div class="embed-dialog" @click.stop>
+      <div class="embed-dialog-title">插入内嵌网页</div>
+      <div class="embed-dialog-body">
+        <label class="embed-field">
+          <span>网页地址（仅 HTTPS）</span>
+          <input
+            v-model="embedUrlInput"
+            class="command-input"
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            autofocus
+            @keydown.enter.prevent="confirmEmbed"
+            @keydown.escape.prevent="closeEmbedDialog"
+          />
+        </label>
+        <label class="embed-field">
+          <span>标题（可选）</span>
+          <input
+            v-model="embedTitleInput"
+            class="command-input"
+            type="text"
+            placeholder="内嵌网页"
+            @keydown.enter.prevent="confirmEmbed"
+            @keydown.escape.prevent="closeEmbedDialog"
+          />
+        </label>
+        <p v-if="embedUrlInput.trim() && !embedUrlValid" class="embed-url-error">
+          请输入合法的 HTTPS 链接
+        </p>
+      </div>
+      <div class="embed-dialog-actions">
+        <button type="button" class="btn" :disabled="!embedUrlValid" @click="confirmEmbed">插入</button>
+        <button type="button" class="btn ghost" @click="closeEmbedDialog">取消</button>
+      </div>
     </div>
   </div>
 </template>

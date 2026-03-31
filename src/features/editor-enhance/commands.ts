@@ -15,6 +15,7 @@
   | 'clearMarks'
   | 'undo'
   | 'redo'
+  | 'embedWeb'
 
 export interface CommandMenuItem {
   id: string
@@ -22,7 +23,7 @@ export interface CommandMenuItem {
   description: string
   keywords: string
   action: CommandAction
-  group: '基础' | '结构' | '样式' | '编辑'
+  group: '基础' | '结构' | '样式' | '编辑' | '进阶'
 }
 
 export const commandMenuItems: CommandMenuItem[] = [
@@ -153,6 +154,14 @@ export const commandMenuItems: CommandMenuItem[] = [
     keywords: '重做 redo forward',
     action: 'redo',
     group: '编辑',
+  },
+  {
+    id: 'embedWeb',
+    label: '内嵌网页',
+    description: '插入网页嵌入块，支持 YouTube / Bilibili / Figma 等',
+    keywords: '内嵌 网页 embed web iframe 嵌入 视频 figma youtube bilibili 链接',
+    action: 'embedWeb',
+    group: '进阶',
   },
 ]
 
