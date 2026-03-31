@@ -22,13 +22,9 @@ import {
 } from '../features/editor-enhance/history'
 import {
   isValidEmbedUrl,
-  detectProvider,
-  toEmbedUrl,
-  getProviderLabel,
-  parseEmbedBlocks,
   createEmbedToken,
-  type EmbedBlock,
 } from '../features/editor-enhance/embeds'
+import createEmbedNodeViewPlugin from '../features/editor-enhance/embed-node-view'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -226,8 +222,6 @@ const commentItemRefs = new Map<string, HTMLElement>()
 const embedDialogVisible = ref(false)
 const embedUrlInput = ref('')
 const embedTitleInput = ref('')
-const embedBlocks = ref<EmbedBlock[]>([])
-const editingEmbedBlock = ref<EmbedBlock | null>(null)
 
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
@@ -302,6 +296,8 @@ const commentHighlight = $prose(() =>
     },
   })
 )
+
+const embedNodeView = $prose(() => createEmbedNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
@@ -458,8 +454,6 @@ const collaboratorCountLabel = computed(() => {
 })
 
 const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
-
-const parsedEmbedBlocks = computed(() => parseEmbedBlocks(markdown.value))
 
 const embedUrlValid = computed(() => {
   const url = embedUrlInput.value.trim()
@@ -885,6 +879,7 @@ async function rebuildEditor(seed?: string) {
 
   instance.editor.use(collab)
   instance.editor.use(commentHighlight)
+  instance.editor.use(embedNodeView)
 
   instance.on((listener) => {
     listener.markdownUpdated((_ctx, next) => {
@@ -1049,7 +1044,6 @@ function onPaletteKeydown(event: KeyboardEvent) {
 // ── Embed dialog ──
 
 function openEmbedDialog() {
-  editingEmbedBlock.value = null
   embedDialogVisible.value = true
   embedUrlInput.value = ''
   embedTitleInput.value = ''
@@ -1059,7 +1053,6 @@ function closeEmbedDialog() {
   embedDialogVisible.value = false
   embedUrlInput.value = ''
   embedTitleInput.value = ''
-  editingEmbedBlock.value = null
 }
 
 function confirmEmbed() {
@@ -1067,82 +1060,19 @@ function confirmEmbed() {
   if (!isValidEmbedUrl(url)) return
 
   const title = embedTitleInput.value.trim() || '内嵌网页'
-  const provider = detectProvider(url)
-  const embedUrl = toEmbedUrl(url, provider)
-  const editing = editingEmbedBlock.value
+  const token = createEmbedToken(title, url)
 
-  if (editing) {
-    // Update existing block
-    const oldToken = createEmbedToken(editing.title, editing.sourceUrl)
-    const newToken = createEmbedToken(title, url)
-
-    editing.sourceUrl = url
-    editing.provider = provider
-    editing.embedUrl = embedUrl
-    editing.title = title
-    editing.updatedAt = Date.now()
-
-    // Replace token in markdown
-    if (markdown.value.includes(oldToken)) {
-      const nextMarkdown = markdown.value.replace(oldToken, newToken)
-      void syncEditorMarkdown(nextMarkdown)
-    }
-  } else {
-    // Create new block
-    const block: EmbedBlock = {
-      id: `embed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      sourceUrl: url,
-      provider,
-      embedUrl,
-      status: 'ready',
-      title,
-      width: 800,
-      height: 450,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }
-
-    embedBlocks.value = [block, ...embedBlocks.value]
-
-    // Insert embed token into the editor
-    const token = createEmbedToken(title, url)
-    if (crepe) {
-      crepe.editor.action((ctx) => {
-        const view = ctx.get(editorViewCtx)
-        const { state } = view
-        const tr = state.tr.insertText(`\n${token}\n`, state.selection.from)
-        view.dispatch(tr)
-        view.focus()
-      })
-    }
+  if (crepe) {
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      const { state } = view
+      const tr = state.tr.insertText(`\n${token}\n`, state.selection.from)
+      view.dispatch(tr)
+      view.focus()
+    })
   }
 
   closeEmbedDialog()
-}
-
-function removeEmbedBlock(id: string) {
-  const block = embedBlocks.value.find((b) => b.id === id)
-  if (!block) return
-
-  embedBlocks.value = embedBlocks.value.filter((b) => b.id !== id)
-
-  // Also remove the token from markdown
-  const token = createEmbedToken(block.title, block.sourceUrl)
-  if (markdown.value.includes(token)) {
-    const nextMarkdown = markdown.value.replace(`\n${token}\n`, '\n').replace(token, '')
-    void syncEditorMarkdown(nextMarkdown)
-  }
-}
-
-function editEmbedBlock(block: EmbedBlock) {
-  editingEmbedBlock.value = block
-  embedUrlInput.value = block.sourceUrl
-  embedTitleInput.value = block.title
-  embedDialogVisible.value = true
-}
-
-function openEmbedSource(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 function onGlobalKeydown(event: KeyboardEvent) {
@@ -1329,40 +1259,6 @@ onBeforeUnmount(() => {
           <div ref="host" class="playground-host"></div>
         </div>
 
-        <!-- Embed blocks rendered inline below editor -->
-        <div v-if="embedBlocks.length || parsedEmbedBlocks.length" class="embed-blocks-area">
-          <div
-            v-for="block in embedBlocks"
-            :key="block.id"
-            class="embed-card"
-            :class="{ invalid: block.status !== 'ready' }"
-          >
-            <div class="embed-card-header">
-              <span class="embed-provider-badge">{{ getProviderLabel(block.provider) }}</span>
-              <span class="embed-card-title">{{ block.title }}</span>
-              <div class="embed-card-actions">
-                <button type="button" class="btn xs" @click="editEmbedBlock(block)">编辑</button>
-                <button type="button" class="btn xs" @click="openEmbedSource(block.sourceUrl)">打开</button>
-                <button type="button" class="btn xs ghost" @click="removeEmbedBlock(block.id)">删除</button>
-              </div>
-            </div>
-            <div v-if="block.status === 'ready'" class="embed-iframe-wrap">
-              <iframe
-                :src="block.embedUrl"
-                :title="block.title"
-                :width="block.width"
-                :height="block.height"
-                sandbox="allow-scripts allow-same-origin allow-popups"
-                loading="lazy"
-                referrerpolicy="no-referrer"
-                allowfullscreen
-              ></iframe>
-            </div>
-            <div v-else class="embed-error">
-              <p>无法嵌入此链接（仅支持 HTTPS）</p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <aside class="play-side-panels">
