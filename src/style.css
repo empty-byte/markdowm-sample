@@ -1241,3 +1241,62 @@ code {
 }
 
 
+.embed-action-btn.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.whiteboard-inline-card {
+  margin: 10px 0;
+}
+
+.whiteboard-inline-card .whiteboard-preview-wrap {
+  width: 100%;
+  min-height: 220px;
+  background: linear-gradient(180deg, #f8fbff, #eff5fd);
+  border-top: 1px solid #e2ebf6;
+  border-bottom: 1px solid #e2ebf6;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.whiteboard-inline-card .whiteboard-preview-wrap img {
+  width: 100%;
+  max-height: 460px;
+  display: block;
+  object-fit: contain;
+  background: #fff;
+}
+
+.whiteboard-inline-card .whiteboard-preview-empty {
+  padding: 22px 18px;
+  color: #5d7087;
+  font-size: 13px;
+  text-align: center;
+}
+
+.whiteboard-inline-card .whiteboard-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.whiteboard-inline-card .whiteboard-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a4058;
+}
+
+.whiteboard-inline-card .whiteboard-id {
+  font-size: 11px;
+  color: #73839a;
+}
+
+.whiteboard-token-hidden {
+  display: none;
+}

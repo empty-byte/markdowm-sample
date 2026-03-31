@@ -27,6 +27,17 @@ import {
   type EmbedEditRequestDetail,
 } from '../features/editor-enhance/embeds'
 import createEmbedNodeViewPlugin from '../features/editor-enhance/embed-node-view'
+import {
+  createWhiteboardId,
+  createWhiteboardSource,
+  createWhiteboardToken,
+  getWhiteboardById,
+  upsertWhiteboard,
+  WHITEBOARD_EDIT_REQUEST_EVENT,
+  type WhiteboardEditRequestDetail,
+} from '../features/editor-enhance/whiteboards'
+import createWhiteboardNodeViewPlugin from '../features/editor-enhance/whiteboard-node-view'
+import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -59,6 +70,12 @@ interface SelectedQuoteRange {
 interface SnapshotPayload {
   markdown: string
   comments: EditorComment[]
+}
+
+interface WhiteboardSavePayload {
+  title: string
+  previewUrl: string
+  scene: unknown
 }
 
 interface CollaboratorIdentity {
@@ -226,6 +243,11 @@ const embedDialogMode = ref<'insert' | 'edit'>('insert')
 const embedEditTarget = ref<EmbedEditRequestDetail | null>(null)
 const embedUrlInput = ref('')
 const embedTitleInput = ref('')
+const whiteboardEditorVisible = ref(false)
+const whiteboardEditorMode = ref<'insert' | 'edit'>('insert')
+const whiteboardEditTarget = ref<WhiteboardEditRequestDetail | null>(null)
+const whiteboardEditorTitle = ref('白板')
+const whiteboardEditorScene = ref<unknown>(null)
 
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
@@ -302,6 +324,7 @@ const commentHighlight = $prose(() =>
 )
 
 const embedNodeView = $prose(() => createEmbedNodeViewPlugin())
+const whiteboardNodeView = $prose(() => createWhiteboardNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
@@ -867,6 +890,14 @@ async function rebuildEditor(seed?: string) {
               openEmbedDialog()
             },
           })
+
+          advancedGroup.addItem('whiteboard', {
+            label: '白板',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h10"/><path d="M7 12h7"/><path d="M10 18v2"/><path d="M14 18v2"/></svg>',
+            onRun: () => {
+              openWhiteboardDialog()
+            },
+          })
         },
       },
       [CrepeFeature.Toolbar]: {
@@ -886,6 +917,7 @@ async function rebuildEditor(seed?: string) {
   instance.editor.use(collab)
   instance.editor.use(commentHighlight)
   instance.editor.use(embedNodeView)
+  instance.editor.use(whiteboardNodeView)
 
   instance.on((listener) => {
     listener.markdownUpdated((_ctx, next) => {
@@ -1137,6 +1169,115 @@ function onEmbedEditRequest(event: Event) {
   openEmbedEditDialog(customEvent.detail)
 }
 
+
+// ── Whiteboard dialog ──
+
+function openWhiteboardDialog() {
+  whiteboardEditorMode.value = 'insert'
+  whiteboardEditTarget.value = null
+  whiteboardEditorTitle.value = '白板'
+  whiteboardEditorScene.value = null
+  whiteboardEditorVisible.value = true
+}
+
+function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
+  whiteboardEditorMode.value = 'edit'
+  whiteboardEditTarget.value = detail
+
+  const stored = getWhiteboardById(detail.id)
+  whiteboardEditorTitle.value = detail.title || stored?.title || '白板'
+  whiteboardEditorScene.value = stored?.scene ?? null
+  whiteboardEditorVisible.value = true
+}
+
+function closeWhiteboardEditor() {
+  whiteboardEditorVisible.value = false
+  whiteboardEditorMode.value = 'insert'
+  whiteboardEditTarget.value = null
+  whiteboardEditorTitle.value = '白板'
+  whiteboardEditorScene.value = null
+}
+
+function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: WhiteboardSavePayload) {
+  if (!crepe) return
+
+  const normalizedTitle = payload.title.trim() || '白板'
+  const record = upsertWhiteboard({
+    id: detail.id,
+    title: normalizedTitle,
+    previewUrl: payload.previewUrl,
+    scene: payload.scene,
+  })
+  const source = createWhiteboardSource(record.id)
+  const token = createWhiteboardToken(normalizedTitle, record.id)
+
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const { state } = view
+    let tr = state.tr
+
+    if (detail.kind === 'token') {
+      tr = tr.insertText(token, detail.from, detail.to)
+    } else {
+      const imageNode = state.doc.nodeAt(detail.from)
+      if (imageNode?.type.name === 'image') {
+        tr = tr.setNodeMarkup(detail.from, undefined, {
+          ...imageNode.attrs,
+          src: source,
+          alt: `whiteboard:${normalizedTitle}`,
+          title: normalizedTitle,
+        })
+      } else {
+        tr = tr.insertText(token, detail.from, detail.to)
+      }
+    }
+
+    view.dispatch(tr)
+    view.focus()
+  })
+
+  crepe.editor.action(forceUpdate())
+}
+
+function saveWhiteboard(payload: WhiteboardSavePayload) {
+  const target = whiteboardEditTarget.value
+
+  if (whiteboardEditorMode.value === 'edit' && target) {
+    applyWhiteboardEdit(target, payload)
+    closeWhiteboardEditor()
+    return
+  }
+
+  const id = createWhiteboardId()
+  const normalizedTitle = payload.title.trim() || '白板'
+  upsertWhiteboard({
+    id,
+    title: normalizedTitle,
+    previewUrl: payload.previewUrl,
+    scene: payload.scene,
+  })
+  const token = createWhiteboardToken(normalizedTitle, id)
+
+  if (crepe) {
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      const { state } = view
+      const tr = state.tr.insertText(`\n${token}\n`, state.selection.from)
+      view.dispatch(tr)
+      view.focus()
+    })
+
+    crepe.editor.action(forceUpdate())
+  }
+
+  closeWhiteboardEditor()
+}
+
+function onWhiteboardEditRequest(event: Event) {
+  const customEvent = event as CustomEvent<WhiteboardEditRequestDetail>
+  if (!customEvent.detail) return
+  openWhiteboardEditDialog(customEvent.detail)
+}
 function onGlobalKeydown(event: KeyboardEvent) {
   const key = event.key.toLowerCase()
   if ((event.ctrlKey || event.metaKey) && key === 'k') {
@@ -1209,6 +1350,7 @@ watch(filteredPaletteActions, (items) => {
 onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeydown)
   window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
+  window.addEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
   yComments.observe(syncCommentsFromSharedState)
   ySnapshots.observe(syncSnapshotsFromSharedState)
   provider.awareness?.on('change', refreshCollaborators)
@@ -1221,6 +1363,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
+  window.removeEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
 
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
@@ -1579,6 +1722,18 @@ onBeforeUnmount(() => {
       </div>
     </div>
   </div>
+
+  <WhiteboardExcalidrawDialog
+    v-if="whiteboardEditorVisible"
+    :mode="whiteboardEditorMode"
+    :title="whiteboardEditorTitle"
+    :initial-scene="whiteboardEditorScene"
+    @cancel="closeWhiteboardEditor"
+    @save="saveWhiteboard"
+  />
 </template>
+
+
+
 
 

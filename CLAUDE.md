@@ -53,7 +53,6 @@ This is a Vue 3 + Vite demo app showcasing a rich Markdown editor with real-time
 | `history.ts` | Immutable add/remove helpers for `HistorySnapshot[]` (max 20 entries) |
 | `embeds.ts` | Validates HTTPS embed URLs, normalizes YouTube/Bilibili/Figma URLs to iframe-friendly form, parses `![embed:…](url)` tokens from Markdown |
 | `slash.ts` | Detects `/command` trigger in editor text before cursor |
-| `commands.ts` | Static list of command palette items with fuzzy `filterCommands(query)` |
 | `comment-anchor-highlight.ts` | ProseMirror `Plugin` that decorates comment anchor ranges in the editor |
 
 ### Embed token syntax

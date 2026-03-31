@@ -1,7 +1,6 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { addComment, removeComment } from '../src/features/editor-enhance/comments'
 import { createSnapshot, findSnapshot, removeSnapshot } from '../src/features/editor-enhance/history'
-import { filterCommands } from '../src/features/editor-enhance/commands'
 
 describe('editor enhance helpers', () => {
   it('adds comment to the top and can remove by id', () => {
@@ -31,11 +30,5 @@ describe('editor enhance helpers', () => {
     const removed = removeSnapshot(second, second[0].id)
     expect(removed).toHaveLength(1)
     expect(removed[0].label).toBe('v1')
-  })
-
-  it('filters command menu items by query', () => {
-    const list = filterCommands('标题')
-    expect(list.length).toBeGreaterThan(0)
-    expect(list.every((item) => item.label.includes('标题'))).toBe(true)
   })
 })

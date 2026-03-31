@@ -116,3 +116,32 @@
 - 2026-03-30：确认白板预览存储采用静态图片文件地址
 - 2026-03-30：确认白板编辑入口采用弹框
 
+
+## 11. 决策补充（2026-03-31 实现落地）
+
+- 已接入 `/` 菜单白板入口：在高级菜单中新增 `白板`。
+- 白板 Markdown 语法按已确认方案落地：`![whiteboard:title](whiteboard://id)`。
+- 白板卡片展示方式：
+  - 正文中渲染白板预览图卡片。
+  - hover 显示 `打开 / 编辑 / 删除`。
+- 编辑入口采用弹框：
+  - 插入时填写标题与预览图静态地址。
+  - 编辑时回填当前数据并保存覆盖。
+- 本期存储实现：白板数据写入浏览器 `localStorage`（key: `milkdown:whiteboards:v1`），用于刷新恢复。
+- 兼容说明：
+  - 当前“白板编辑”是预览图地址编辑模型（非 Excalidraw 实时画图）。
+  - 后续接 Excalidraw 时，可复用 `whiteboard://id` token 与卡片渲染链路。
+
+## 12. 决策更新（2026-03-31 Excalidraw 接入）
+
+- 已由“预览图地址编辑”升级为 Excalidraw 真编辑器弹框（Vue3 内通过 React bridge 挂载）。
+- `/` 菜单选择 `白板` 后，直接进入 Excalidraw 画布编辑。
+- 保存时自动：
+  - 导出 PNG 预览图（data URL）；
+  - 持久化 scene（elements/appState/files）；
+  - 回写并保持 Markdown token 语法：`![whiteboard:title](whiteboard://id)`。
+- 白板卡片保留 `打开 / 编辑 / 删除`：
+  - `编辑` 回到 Excalidraw 并加载已有 scene；
+  - `打开` 访问当前预览图；
+  - `删除` 删除文档中的 token（数据按现策略可留存，后续可做 orphan 清理）。
+- 本期仍为非协作白板；协作能力后续再接入 Yjs/Hocuspocus。

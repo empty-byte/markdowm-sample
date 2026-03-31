@@ -11,6 +11,7 @@
         "collab:server": "node ./scripts/collab-server.mjs"
     },
     "dependencies": {
+        "@excalidraw/excalidraw": "^0.18.0",
         "@hocuspocus/provider": "^3.4.4",
         "@milkdown/core": "^7.19.2",
         "@milkdown/crepe": "^7.19.2",
@@ -21,6 +22,8 @@
         "@milkdown/preset-gfm": "^7.19.2",
         "@milkdown/utils": "^7.19.2",
         "@milkdown/vue": "^7.19.2",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
         "vue": "^3.5.30",
         "vue-router": "^4.5.1",
         "yjs": "^13.6.30"
@@ -28,6 +31,8 @@
     "devDependencies": {
         "@hocuspocus/server": "^3.4.4",
         "@types/node": "^24.12.0",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-vue": "^6.0.5",
         "@vue/test-utils": "^2.4.6",
         "@vue/tsconfig": "^0.9.0",
