@@ -38,6 +38,7 @@ const hostRef = ref<HTMLDivElement | null>(null)
 const titleInput = ref(props.title || '白板')
 const saving = ref(false)
 const error = ref('')
+const isFullscreen = ref(false)
 
 let reactRoot: Root | null = null
 let excalidrawApi: ExcalidrawImperativeAPI | null = null
@@ -47,6 +48,7 @@ const confirmText = computed(() => {
   if (saving.value) return '保存中...'
   return props.mode === 'edit' ? '保存' : '插入'
 })
+const fullscreenButtonText = computed(() => (isFullscreen.value ? '退出全屏' : '全屏编辑'))
 
 watch(
   () => props.title,
@@ -58,6 +60,11 @@ watch(
 function onCancel() {
   if (saving.value) return
   emit('cancel')
+}
+
+function toggleFullscreen() {
+  if (saving.value) return
+  isFullscreen.value = !isFullscreen.value
 }
 
 function disposeRoot() {
@@ -170,9 +177,19 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="command-menu-mask whiteboard-editor-mask" @click.self="onCancel">
-    <div class="whiteboard-editor-dialog" @click.stop>
+    <div class="whiteboard-editor-dialog" :class="{ 'is-fullscreen': isFullscreen }" @click.stop>
       <div class="whiteboard-editor-head">
-        <div class="whiteboard-editor-title">{{ dialogTitle }}</div>
+        <div class="whiteboard-editor-head-top">
+          <div class="whiteboard-editor-title">{{ dialogTitle }}</div>
+          <button
+            type="button"
+            class="btn ghost whiteboard-fullscreen-btn"
+            :disabled="saving"
+            @click="toggleFullscreen"
+          >
+            {{ fullscreenButtonText }}
+          </button>
+        </div>
         <input
           v-model="titleInput"
           class="command-input whiteboard-title-input"
@@ -213,6 +230,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.whiteboard-editor-dialog.is-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  border-radius: 0;
+  border: 0;
+}
+
 .whiteboard-editor-head {
   padding: 12px 14px;
   border-bottom: 1px solid #e2eaf5;
@@ -221,10 +246,24 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, #f9fbff, #f4f8ff);
 }
 
+.whiteboard-editor-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .whiteboard-editor-title {
   font-size: 14px;
   font-weight: 700;
   color: #2a415e;
+}
+
+.whiteboard-fullscreen-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
 }
 
 .whiteboard-title-input {
