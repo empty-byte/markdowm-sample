@@ -3,18 +3,18 @@ import { Decoration, DecorationSet } from '@milkdown/prose/view'
 import type { EditorView } from '@milkdown/prose/view'
 import type { Node as ProsemirrorNode } from '@milkdown/prose/model'
 import {
-  emitWhiteboardEditRequest,
-  extractWhiteboardId,
-  getWhiteboardById,
-  type WhiteboardSourceKind,
-} from './whiteboards'
+  emitFlowchartEditRequest,
+  extractFlowchartId,
+  getFlowchartById,
+  type FlowchartSourceKind,
+} from './flowcharts'
 
-export const whiteboardNodeViewPluginKey = new PluginKey('whiteboardNodeView')
+export const flowchartNodeViewPluginKey = new PluginKey('flowchartNodeView')
 
-interface WhiteboardWidget {
+interface FlowchartWidget {
   from: number
   to: number
-  kind: WhiteboardSourceKind
+  kind: FlowchartSourceKind
   id: string
   source: string
   title: string
@@ -22,19 +22,19 @@ interface WhiteboardWidget {
   updatedAt: number
 }
 
-const whiteboardTokenPattern = /!\[whiteboard:([^\]]*)\]\((whiteboard:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
+const flowchartTokenPattern = /!\[flowchart:([^\]]*)\]\((flowchart:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
 
-function collectWhiteboardWidgets(doc: ProsemirrorNode): WhiteboardWidget[] {
-  const results: WhiteboardWidget[] = []
+function collectFlowchartWidgets(doc: ProsemirrorNode): FlowchartWidget[] {
+  const results: FlowchartWidget[] = []
 
   doc.descendants((node, pos, parent) => {
-    if (node.type.name === 'image' && typeof node.attrs.alt === 'string' && node.attrs.alt.startsWith('whiteboard:')) {
+    if (node.type.name === 'image' && typeof node.attrs.alt === 'string' && node.attrs.alt.startsWith('flowchart:')) {
       const source = String(node.attrs.src ?? '')
-      const id = extractWhiteboardId(source)
+      const id = extractFlowchartId(source)
       if (!id) return
 
-      const title = String(node.attrs.alt).slice('whiteboard:'.length).trim() || '白板'
-      const stored = getWhiteboardById(id)
+      const title = String(node.attrs.alt).slice('flowchart:'.length).trim() || '流程图'
+      const stored = getFlowchartById(id)
       results.push({
         from: pos,
         to: pos + node.nodeSize,
@@ -51,17 +51,17 @@ function collectWhiteboardWidgets(doc: ProsemirrorNode): WhiteboardWidget[] {
     if (!node.isText || !node.text) return
     if (parent?.type?.spec?.code) return
 
-    whiteboardTokenPattern.lastIndex = 0
+    flowchartTokenPattern.lastIndex = 0
     let match: RegExpExecArray | null
 
-    while ((match = whiteboardTokenPattern.exec(node.text)) !== null) {
+    while ((match = flowchartTokenPattern.exec(node.text)) !== null) {
       const token = match[0]
       const source = match[2] ?? ''
-      const id = extractWhiteboardId(source)
+      const id = extractFlowchartId(source)
       if (!id) continue
 
-      const stored = getWhiteboardById(id)
-      const title = (match[1] ?? '').trim() || stored?.title || '白板'
+      const stored = getFlowchartById(id)
+      const title = (match[1] ?? '').trim() || stored?.title || '流程图'
       const from = pos + match.index
       const to = from + token.length
 
@@ -91,9 +91,9 @@ function stopAction(event: MouseEvent): void {
   event.stopPropagation()
 }
 
-function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTMLElement {
+function createFlowchartWidget(widget: FlowchartWidget, view: EditorView): HTMLElement {
   const wrapper = document.createElement('div')
-  wrapper.className = 'embed-inline-card whiteboard-inline-card'
+  wrapper.className = 'embed-inline-card flowchart-inline-card'
   wrapper.contentEditable = 'false'
 
   const actions = document.createElement('div')
@@ -106,7 +106,7 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
   editBtn.addEventListener('mousedown', stopMouseDown)
   editBtn.addEventListener('click', (event) => {
     stopAction(event)
-    emitWhiteboardEditRequest({
+    emitFlowchartEditRequest({
       kind: widget.kind,
       from: widget.from,
       to: widget.to,
@@ -137,7 +137,7 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
   actions.appendChild(deleteBtn)
 
   const previewWrap = document.createElement('div')
-  previewWrap.className = 'whiteboard-preview-wrap'
+  previewWrap.className = 'flowchart-preview-wrap'
 
   if (widget.previewUrl) {
     const image = document.createElement('img')
@@ -147,8 +147,8 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
     previewWrap.appendChild(image)
   } else {
     const empty = document.createElement('div')
-    empty.className = 'whiteboard-preview-empty'
-    empty.textContent = '白板预览未设置，请点击“编辑”补充预览图地址'
+    empty.className = 'flowchart-preview-empty'
+    empty.textContent = '流程图预览未设置，请点击“编辑”生成预览图'
     previewWrap.appendChild(empty)
   }
 
@@ -174,12 +174,12 @@ function createWhiteboardWidget(widget: WhiteboardWidget, view: EditorView): HTM
   return wrapper
 }
 
-export default function createWhiteboardNodeViewPlugin() {
+export default function createFlowchartNodeViewPlugin() {
   return new Plugin({
-    key: whiteboardNodeViewPluginKey,
+    key: flowchartNodeViewPluginKey,
     props: {
       decorations: (state) => {
-        const widgets = collectWhiteboardWidgets(state.doc)
+        const widgets = collectFlowchartWidgets(state.doc)
         if (!widgets.length) return null
 
         const decorations: Decoration[] = []
@@ -194,15 +194,15 @@ export default function createWhiteboardNodeViewPlugin() {
           } else {
             decorations.push(
               Decoration.inline(widget.from, widget.to, {
-                class: 'whiteboard-token-hidden',
+                class: 'flowchart-token-hidden',
               })
             )
           }
 
           decorations.push(
-            Decoration.widget(widget.to, (view: EditorView) => createWhiteboardWidget(widget, view), {
+            Decoration.widget(widget.to, (view: EditorView) => createFlowchartWidget(widget, view), {
               side: -1,
-              key: `whiteboard-${widget.kind}-${widget.from}-${widget.to}-${widget.updatedAt}`,
+              key: `flowchart-${widget.kind}-${widget.from}-${widget.to}-${widget.updatedAt}`,
             })
           )
         }

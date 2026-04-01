@@ -1304,3 +1304,37 @@ code {
 .whiteboard-token-hidden {
   display: none;
 }
+
+.flowchart-inline-card {
+  margin: 10px 0;
+}
+
+.flowchart-inline-card .flowchart-preview-wrap {
+  width: 100%;
+  min-height: 220px;
+  background: linear-gradient(180deg, #f8fbff, #eff5fd);
+  border-bottom: 1px solid #e2ebf6;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.flowchart-inline-card .flowchart-preview-wrap img {
+  width: 100%;
+  max-height: 460px;
+  display: block;
+  object-fit: contain;
+  background: #fff;
+}
+
+.flowchart-inline-card .flowchart-preview-empty {
+  padding: 22px 18px;
+  color: #5d7087;
+  font-size: 13px;
+  text-align: center;
+}
+
+.flowchart-token-hidden {
+  display: none;
+}
+

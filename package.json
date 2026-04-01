@@ -13,6 +13,8 @@
     "dependencies": {
         "@excalidraw/excalidraw": "^0.18.0",
         "@hocuspocus/provider": "^3.4.4",
+        "@logicflow/core": "^2.1.11",
+        "@logicflow/extension": "^2.1.15",
         "@milkdown/core": "^7.19.2",
         "@milkdown/crepe": "^7.19.2",
         "@milkdown/plugin-collab": "^7.19.2",

@@ -36,8 +36,19 @@ import {
   WHITEBOARD_EDIT_REQUEST_EVENT,
   type WhiteboardEditRequestDetail,
 } from '../features/editor-enhance/whiteboards'
+import {
+  createFlowchartId,
+  createFlowchartSource,
+  createFlowchartToken,
+  getFlowchartById,
+  upsertFlowchart,
+  FLOWCHART_EDIT_REQUEST_EVENT,
+  type FlowchartEditRequestDetail,
+} from '../features/editor-enhance/flowcharts'
 import createWhiteboardNodeViewPlugin from '../features/editor-enhance/whiteboard-node-view'
+import createFlowchartNodeViewPlugin from '../features/editor-enhance/flowchart-node-view'
 import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
+import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -73,6 +84,12 @@ interface SnapshotPayload {
 }
 
 interface WhiteboardSavePayload {
+  title: string
+  previewUrl: string
+  scene: unknown
+}
+
+interface FlowchartSavePayload {
   title: string
   previewUrl: string
   scene: unknown
@@ -248,6 +265,11 @@ const whiteboardEditorMode = ref<'insert' | 'edit'>('insert')
 const whiteboardEditTarget = ref<WhiteboardEditRequestDetail | null>(null)
 const whiteboardEditorTitle = ref('白板')
 const whiteboardEditorScene = ref<unknown>(null)
+const flowchartEditorVisible = ref(false)
+const flowchartEditorMode = ref<'insert' | 'edit'>('insert')
+const flowchartEditTarget = ref<FlowchartEditRequestDetail | null>(null)
+const flowchartEditorTitle = ref('流程图')
+const flowchartEditorScene = ref<unknown>(null)
 
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
@@ -325,6 +347,7 @@ const commentHighlight = $prose(() =>
 
 const embedNodeView = $prose(() => createEmbedNodeViewPlugin())
 const whiteboardNodeView = $prose(() => createWhiteboardNodeViewPlugin())
+const flowchartNodeView = $prose(() => createFlowchartNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
@@ -448,6 +471,15 @@ const paletteActions = computed<PaletteAction[]>(() => {
       description: '保存当前文档与评论状态，方便后续还原',
       run: () => {
         createHistorySnapshot()
+      },
+    },
+    {
+      id: 'insert-flowchart',
+      group: 'Insert',
+      label: '插入流程图',
+      description: '打开流程图编辑弹框并插入到文档',
+      run: () => {
+        openFlowchartDialog()
       },
     }
   )
@@ -898,6 +930,14 @@ async function rebuildEditor(seed?: string) {
               openWhiteboardDialog()
             },
           })
+
+          advancedGroup.addItem('flowchart', {
+            label: '流程图',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="4" rx="1"/><rect x="14" y="4" width="6" height="4" rx="1"/><rect x="9" y="14" width="6" height="4" rx="1"/><path d="M10 6h4"/><path d="M17 8v2"/><path d="M7 8v2"/><path d="M7 10h10"/><path d="M12 10v4"/></svg>',
+            onRun: () => {
+              openFlowchartDialog()
+            },
+          })
         },
       },
       [CrepeFeature.Toolbar]: {
@@ -918,6 +958,7 @@ async function rebuildEditor(seed?: string) {
   instance.editor.use(commentHighlight)
   instance.editor.use(embedNodeView)
   instance.editor.use(whiteboardNodeView)
+  instance.editor.use(flowchartNodeView)
 
   instance.on((listener) => {
     listener.markdownUpdated((_ctx, next) => {
@@ -1278,6 +1319,118 @@ function onWhiteboardEditRequest(event: Event) {
   if (!customEvent.detail) return
   openWhiteboardEditDialog(customEvent.detail)
 }
+
+// ── Flowchart dialog ──
+
+function openFlowchartDialog() {
+  flowchartEditorMode.value = 'insert'
+  flowchartEditTarget.value = null
+  flowchartEditorTitle.value = '流程图'
+  flowchartEditorScene.value = null
+  flowchartEditorVisible.value = true
+}
+
+function openFlowchartEditDialog(detail: FlowchartEditRequestDetail) {
+  flowchartEditorMode.value = 'edit'
+  flowchartEditTarget.value = detail
+
+  const stored = getFlowchartById(detail.id)
+  flowchartEditorTitle.value = detail.title || stored?.title || '流程图'
+  flowchartEditorScene.value = stored?.scene ?? null
+  flowchartEditorVisible.value = true
+}
+
+function closeFlowchartEditor() {
+  flowchartEditorVisible.value = false
+  flowchartEditorMode.value = 'insert'
+  flowchartEditTarget.value = null
+  flowchartEditorTitle.value = '流程图'
+  flowchartEditorScene.value = null
+}
+
+function applyFlowchartEdit(detail: FlowchartEditRequestDetail, payload: FlowchartSavePayload) {
+  if (!crepe) return
+
+  const normalizedTitle = payload.title.trim() || '流程图'
+  const existing = getFlowchartById(detail.id)
+  const nextPreview = payload.previewUrl.trim() || existing?.previewUrl || ''
+  const record = upsertFlowchart({
+    id: detail.id,
+    title: normalizedTitle,
+    previewUrl: nextPreview,
+    scene: payload.scene,
+  })
+  const source = createFlowchartSource(record.id)
+  const token = createFlowchartToken(normalizedTitle, record.id)
+
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const { state } = view
+    let tr = state.tr
+
+    if (detail.kind === 'token') {
+      tr = tr.insertText(token, detail.from, detail.to)
+    } else {
+      const imageNode = state.doc.nodeAt(detail.from)
+      if (imageNode?.type.name === 'image') {
+        tr = tr.setNodeMarkup(detail.from, undefined, {
+          ...imageNode.attrs,
+          src: source,
+          alt: `flowchart:${normalizedTitle}`,
+          title: normalizedTitle,
+        })
+      } else {
+        tr = tr.insertText(token, detail.from, detail.to)
+      }
+    }
+
+    view.dispatch(tr)
+    view.focus()
+  })
+
+  crepe.editor.action(forceUpdate())
+}
+
+function saveFlowchart(payload: FlowchartSavePayload) {
+  const target = flowchartEditTarget.value
+
+  if (flowchartEditorMode.value === 'edit' && target) {
+    applyFlowchartEdit(target, payload)
+    closeFlowchartEditor()
+    return
+  }
+
+  const id = createFlowchartId()
+  const normalizedTitle = payload.title.trim() || '流程图'
+  upsertFlowchart({
+    id,
+    title: normalizedTitle,
+    previewUrl: payload.previewUrl.trim(),
+    scene: payload.scene,
+  })
+  const token = createFlowchartToken(normalizedTitle, id)
+
+  if (crepe) {
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      const { state } = view
+      const tr = state.tr.insertText(`\n${token}\n`, state.selection.from)
+      view.dispatch(tr)
+      view.focus()
+    })
+
+    crepe.editor.action(forceUpdate())
+  }
+
+  closeFlowchartEditor()
+}
+
+function onFlowchartEditRequest(event: Event) {
+  const customEvent = event as CustomEvent<FlowchartEditRequestDetail>
+  if (!customEvent.detail) return
+  openFlowchartEditDialog(customEvent.detail)
+}
+
 function onGlobalKeydown(event: KeyboardEvent) {
   const key = event.key.toLowerCase()
   if ((event.ctrlKey || event.metaKey) && key === 'k') {
@@ -1351,6 +1504,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onGlobalKeydown)
   window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.addEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
+  window.addEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
   yComments.observe(syncCommentsFromSharedState)
   ySnapshots.observe(syncSnapshotsFromSharedState)
   provider.awareness?.on('change', refreshCollaborators)
@@ -1364,6 +1518,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.removeEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
+  window.removeEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
 
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
@@ -1731,7 +1886,20 @@ onBeforeUnmount(() => {
     @cancel="closeWhiteboardEditor"
     @save="saveWhiteboard"
   />
+
+  <FlowchartLogicDialog
+    v-if="flowchartEditorVisible"
+    :mode="flowchartEditorMode"
+    :title="flowchartEditorTitle"
+    :initial-scene="flowchartEditorScene"
+    @cancel="closeFlowchartEditor"
+    @save="saveFlowchart"
+  />
 </template>
+
+
+
+
 
 
 
