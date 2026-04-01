@@ -16,7 +16,6 @@ import createCommentAnchorHighlightPlugin, {
 import { addComment, removeComment, type EditorComment } from '../features/editor-enhance/comments'
 import {
   createSnapshot,
-  findSnapshot,
   removeSnapshot,
   type HistorySnapshot,
 } from '../features/editor-enhance/history'
@@ -61,6 +60,8 @@ import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog
 import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
 import MindmapSimpleDialog from '../components/MindmapSimpleDialog.vue'
 import EmbedWebDialog from '../components/EmbedWebDialog.vue'
+import CommentPanel from '../components/CommentPanel.vue'
+import HistoryPanel from '../components/HistoryPanel.vue'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -69,11 +70,6 @@ interface CrepeFeatureItem {
   key: CrepeFeature
   label: string
   description: string
-}
-
-interface CapabilitySection {
-  title: string
-  items: string[]
 }
 
 interface PaletteAction {
@@ -123,12 +119,6 @@ interface CollaboratorPresence extends CollaboratorIdentity {
   clientId: number
   isLocal: boolean
 }
-
-const themeOptions: Array<{ value: ThemeKind; label: string }> = [
-  { value: 'nord', label: 'Nord' },
-  { value: 'frame', label: 'Frame' },
-  { value: 'classic', label: 'Classic' },
-]
 
 const crepeFeatureItems: CrepeFeatureItem[] = [
   {
@@ -183,69 +173,13 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   },
 ]
 
-const capabilitySections: CapabilitySection[] = [
-  {
-    title: 'Component',
-    items: ['Code Block', 'Image Block', 'Image Inline', 'Link Tooltip', 'List Item Block', 'Table Block'],
-  },
-  {
-    title: 'Preset',
-    items: ['Commonmark', 'GFM'],
-  },
-  {
-    title: 'Plugin',
-    items: ['Listener', 'History', 'Cursor', 'Tooltip', 'Slash', 'Block', 'Indent', 'Trailing', 'Upload', 'Clipboard', 'Collab'],
-  },
-  {
-    title: 'Editor',
-    items: ['Crepe'],
-  },
-  {
-    title: 'Framework',
-    items: ['Core', 'Ctx', 'Utils', 'Transformer'],
-  },
-]
-
-const initialMarkdown = `# Milkdown Playground v7.19.2
-
-👋 Welcome to Milkdown. We are so glad to see you here!
-
-💬 Try editing on the **left side**, or directly edit markdown on the right.
-
-> ⚠ Not the right side!
->
-> Please try something on the left side.
-
-![Polar Bear](https://images.unsplash.com/photo-1589656966895-2f33e7653819?auto=format&fit=crop&w=1200&q=80)
-
-Hello by a polar bear
-
-## Feature Overview
-
-| Feature | Example | Description |
-| --- | --- | --- |
-| Theme | Nord / Frame / Classic | Switch editor visual theme |
-| Plugin | Slash / History / Collab | Extend behaviors |
-| Component | Toolbar / Table / Image | Rich block editing |
-| Syntax | GFM / Latex | Markdown-first editing |
-
-### Playground Shortcuts
-
-- Type "/" in editor to open slash menu
-- Use selected text to trigger floating toolbar
-- Press Ctrl+K to open feature palette
-
-\`\`\`ts
-import { Crepe } from '@milkdown/crepe'
-import '@milkdown/crepe/theme/common/style.css'
-
-const crepe = new Crepe({ root: '#app' })
-await crepe.create()
-\`\`\`
-`
+const initialMarkdown = ``
 
 const host = ref<HTMLDivElement | null>(null)
-const commentInputRef = ref<HTMLTextAreaElement | null>(null)
+const commentPanelRef = ref<{
+  focusInput: () => void
+  scrollCommentIntoView: (id: string) => void
+} | null>(null)
 const paletteInputRef = ref<HTMLInputElement | null>(null)
 const status = ref<ConnectionStatus>('disconnected')
 const markdown = ref(initialMarkdown)
@@ -271,7 +205,6 @@ const selectedRange = ref<SelectedQuoteRange | null>(null)
 const activeCommentId = ref<string | null>(null)
 const activeCommentRange = ref<CommentHighlightRange | null>(null)
 const activeSnapshotId = ref<string | null>(null)
-const commentItemRefs = new Map<string, HTMLElement>()
 
 const embedDialogVisible = ref(false)
 const embedDialogMode = ref<'insert' | 'edit'>('insert')
@@ -374,10 +307,6 @@ const mindmapNodeView = $prose(() => createMindmapNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
-const enabledFeatureCount = computed(() =>
-  crepeFeatureItems.filter((item) => featureFlags.value[item.key]).length
-)
-
 const markdownLineNumbers = computed(() =>
   markdown.value
     .split('\n')
@@ -440,6 +369,24 @@ const paletteActions = computed<PaletteAction[]>(() => {
       description: '锁定编辑区，仅查看内容',
       run: () => {
         readonlyMode.value = !readonlyMode.value
+      },
+    },
+    {
+      id: 'toggle-markdown-pane',
+      group: 'Editor',
+      label: `${markdownPaneVisible.value ? '隐藏' : '显示'} Markdown 面板`,
+      description: '切换右侧 Markdown 面板显示',
+      run: () => {
+        markdownPaneVisible.value = !markdownPaneVisible.value
+      },
+    },
+    {
+      id: 'toggle-auto-sync',
+      group: 'Editor',
+      label: `${autoSyncMarkdown.value ? '关闭' : '开启'} Markdown 自动同步`,
+      description: '控制右侧 Markdown 输入时是否自动应用到左侧',
+      run: () => {
+        autoSyncMarkdown.value = !autoSyncMarkdown.value
       },
     },
     {
@@ -529,23 +476,10 @@ const filteredPaletteActions = computed(() => {
   })
 })
 
-const activeComment = computed(() =>
-  comments.value.find((item) => item.id === activeCommentId.value) ?? null
-)
-
-const activeSnapshot = computed(() =>
-  activeSnapshotId.value ? findSnapshot(snapshots.value, activeSnapshotId.value) ?? null : null
-)
-
-const commentCountLabel = computed(() => `${comments.value.length} 条评论`)
-const snapshotCountLabel = computed(() => `${snapshots.value.length} 条历史记录`)
 const collaboratorCountLabel = computed(() => {
   if (status.value !== 'connected') return '协同未连接'
   return `${collaborators.value.length} 位协作者在线`
 })
-
-const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
-
 
 function getFeatureFlags() {
   return crepeFeatureItems.reduce((acc, item) => {
@@ -563,20 +497,6 @@ function getEditorView(): EditorView | null {
   })
 
   return view
-}
-
-function setCommentItemRef(id: string, element: unknown) {
-  if (element instanceof HTMLElement) {
-    commentItemRefs.set(id, element)
-    return
-  }
-
-  commentItemRefs.delete(id)
-}
-
-function scrollCommentIntoView(id: string) {
-  const element = commentItemRefs.get(id)
-  element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
 function isEditorCommentRecord(value: unknown): value is EditorComment {
@@ -718,21 +638,6 @@ function parseSnapshotPayload(content: string): SnapshotPayload {
   }
 }
 
-function getSnapshotPreview(snapshot: HistorySnapshot) {
-  const { markdown: snapshotMarkdown } = parseSnapshotPayload(snapshot.content)
-  const lines = snapshotMarkdown
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (!lines.length) return '空白快照'
-  if (lines.length === 1) return lines[0]
-
-  const firstLine = lines[0]
-  const lastLine = lines[lines.length - 1]
-  return firstLine === lastLine ? firstLine : `${firstLine} / ${lastLine}`
-}
-
 function getDefaultSnapshotLabel() {
   return `手动快照 ${snapshots.value.length + 1}`
 }
@@ -755,13 +660,8 @@ function activateCommentById(id: string) {
   updateActiveCommentRange()
 
   void nextTick(() => {
-    scrollCommentIntoView(comment.id)
+    commentPanelRef.value?.scrollCommentIntoView(comment.id)
   })
-}
-
-function focusCommentInput() {
-  commentInputRef.value?.focus()
-  commentInputRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
 function refreshCommentHighlight() {
@@ -793,15 +693,6 @@ function syncSelectionState(selection?: Selection) {
   }
 }
 
-function formatTime(time: number) {
-  return new Date(time).toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 function updateActiveCommentRange() {
   const current = comments.value.find((item) => item.id === activeCommentId.value)
   activeCommentRange.value = current ? { from: current.from, to: current.to } : null
@@ -822,7 +713,7 @@ function focusComment(comment: EditorComment) {
   })
 
   void nextTick(() => {
-    scrollCommentIntoView(comment.id)
+    commentPanelRef.value?.scrollCommentIntoView(comment.id)
   })
 }
 
@@ -857,7 +748,7 @@ function beginCommentFromSelection() {
   refreshCommentHighlight()
 
   void nextTick(() => {
-    focusCommentInput()
+    commentPanelRef.value?.focusInput()
   })
 }
 
@@ -1735,39 +1626,6 @@ onBeforeUnmount(() => {
     </p>
 
     <div class="toolbar">
-      <label class="check-inline">
-        主题
-        <select v-model="theme" class="mini-select">
-          <option v-for="item in themeOptions" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </option>
-        </select>
-      </label>
-
-      <label class="check-inline">
-        <input v-model="darkMode" type="checkbox" /> Dark
-      </label>
-
-      <label class="check-inline">
-        <input v-model="readonlyMode" type="checkbox" /> 只读
-      </label>
-
-      <label class="check-inline">
-        <input v-model="autoSyncMarkdown" type="checkbox" /> 右侧自动同步
-      </label>
-
-      <button type="button" class="btn" @click="openPalette">功能面板 (Ctrl+K)</button>
-      <button
-        type="button"
-        class="btn"
-        :aria-expanded="markdownPaneVisible"
-        @click="markdownPaneVisible = !markdownPaneVisible"
-      >
-        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
-      </button>
-      <button type="button" class="btn" :disabled="isRebuilding" @click="applyMarkdownFromPane">应用右侧 Markdown</button>
-      <button type="button" class="btn" @click="resetSampleMarkdown">恢复示例</button>
-      <button type="button" class="btn" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
       <button type="button" class="btn" @click="connectCollab">连接协同</button>
       <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>
       <span class="status" :data-online="status === 'connected'">{{ status }}</span>
@@ -1788,22 +1646,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <section class="milk-playground-config card">
-      <div class="config-head">
-        <h3>Crepe Feature 开关</h3>
-        <span>{{ enabledFeatureCount }} / {{ crepeFeatureItems.length }} 已启用</span>
-      </div>
-      <div class="feature-grid">
-        <label v-for="item in crepeFeatureItems" :key="item.key" class="feature-switch">
-          <input v-model="featureFlags[item.key]" type="checkbox" />
-          <div>
-            <strong>{{ item.label }}</strong>
-            <p>{{ item.description }}</p>
-          </div>
-        </label>
-      </div>
-    </section>
-
     <div class="milk-workbench">
       <section class="play-pane play-pane-editor">
         <header class="play-pane-head">
@@ -1815,153 +1657,33 @@ onBeforeUnmount(() => {
         </div>
 
       </section>
-
       <aside class="play-side-panels">
-        <section class="panel comments-panel">
-          <div class="comments-panel-head">
-            <div>
-              <h3>评论</h3>
-              <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
-            </div>
-            <div class="panel-head-actions">
-              <span class="comments-badge" :data-active="Boolean(activeComment)">
-                {{ activeComment ? '已定位' : '未选中' }}
-              </span>
-              <button
-                type="button"
-                class="panel-toggle"
-                :aria-expanded="!commentsCollapsed"
-                @click="commentsCollapsed = !commentsCollapsed"
-              >
-                {{ commentsCollapsed ? '展开' : '收起' }}
-              </button>
-            </div>
-          </div>
+        <CommentPanel
+          ref="commentPanelRef"
+          :comments="comments"
+          :active-comment-id="activeCommentId"
+          :comments-collapsed="commentsCollapsed"
+          :selected-quote="selectedRange?.quote ?? ''"
+          :has-selected-range="Boolean(selectedRange)"
+          v-model:comment-draft="commentDraft"
+          @toggle-collapse="commentsCollapsed = !commentsCollapsed"
+          @submit-comment="submitComment"
+          @focus-comment="focusComment"
+          @delete-comment="deleteComment"
+        />
 
-          <div v-show="!commentsCollapsed" class="panel-section-body">
-            <blockquote class="selection-quote" :class="{ empty: !selectedRange }">
-              {{ selectedQuotePreview }}
-            </blockquote>
-
-            <textarea
-              ref="commentInputRef"
-              v-model="commentDraft"
-              class="comment-input"
-              rows="4"
-              placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
-            ></textarea>
-
-            <div class="row-actions comment-actions">
-              <button
-                type="button"
-                class="btn"
-                :disabled="!selectedRange || !commentDraft.trim()"
-                @click="submitComment"
-              >
-                添加评论
-              </button>
-              <span class="panel-tip">点击列表项可回到正文锚点</span>
-            </div>
-
-            <ul v-if="comments.length" class="panel-list comments-list">
-              <li
-                v-for="item in comments"
-                :key="item.id"
-                :ref="(element) => setCommentItemRef(item.id, element)"
-                class="panel-item comment-card"
-                :class="{ active: item.id === activeCommentId }"
-                @click="focusComment(item)"
-              >
-                <div class="panel-item-head">
-                  <strong>{{ item.author }}</strong>
-                  <span>{{ formatTime(item.createdAt) }}</span>
-                </div>
-                <p class="comment-text">{{ item.text }}</p>
-                <p class="panel-item-quote">“{{ item.quote }}”</p>
-                <div class="row-actions">
-                  <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>
-                  <button type="button" class="btn xs ghost" @click.stop="deleteComment(item.id)">
-                    删除
-                  </button>
-                </div>
-              </li>
-            </ul>
-            <p v-else class="panel-tip comments-empty">
-              还没有评论。先在左侧选中一段文本，再输入评论内容。
-            </p>
-          </div>
-        </section>
-
-        <section class="panel history-panel">
-          <div class="history-panel-head">
-            <div>
-              <h3>历史记录</h3>
-              <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片即可还原左侧文档</p>
-            </div>
-            <div class="panel-head-actions">
-              <span class="history-badge" :data-active="Boolean(activeSnapshot)">
-                {{ activeSnapshot ? '当前版本' : '未选中' }}
-              </span>
-              <button
-                type="button"
-                class="panel-toggle"
-                :aria-expanded="!historyCollapsed"
-                @click="historyCollapsed = !historyCollapsed"
-              >
-                {{ historyCollapsed ? '展开' : '收起' }}
-              </button>
-            </div>
-          </div>
-
-          <div v-show="!historyCollapsed" class="panel-section-body">
-            <input
-              v-model="snapshotLabel"
-              class="mini-input"
-              type="text"
-              placeholder="例如：补充结论前 / 发布前检查"
-              @keydown.enter.prevent="createHistorySnapshot"
-            />
-
-            <div class="row-actions history-actions">
-              <button type="button" class="btn" @click="createHistorySnapshot">创建快照</button>
-              <span class="panel-tip">默认会保存当前文档和评论状态</span>
-            </div>
-
-            <ul v-if="snapshots.length" class="panel-list history-list">
-              <li
-                v-for="item in snapshots"
-                :key="item.id"
-                class="panel-item history-card"
-                :class="{ active: item.id === activeSnapshotId }"
-                role="button"
-                tabindex="0"
-                :aria-pressed="item.id === activeSnapshotId"
-                @click="void selectHistorySnapshot(item)"
-                @keydown.enter.prevent="void selectHistorySnapshot(item)"
-                @keydown.space.prevent="void selectHistorySnapshot(item)"
-              >
-                <div class="panel-item-head">
-                  <strong>{{ item.label }}</strong>
-                  <span>{{ formatTime(item.createdAt) }}</span>
-                </div>
-                <p class="history-preview">{{ getSnapshotPreview(item) }}</p>
-                <div class="row-actions">
-                  <button type="button" class="btn xs" @click.stop="restoreHistorySnapshot(item)">
-                    还原
-                  </button>
-                  <button type="button" class="btn xs ghost" @click.stop="deleteHistorySnapshot(item.id)">
-                    删除
-                  </button>
-                </div>
-              </li>
-            </ul>
-            <p v-else class="panel-tip comments-empty">
-              还没有历史记录。手动创建一个快照后，就可以随时把文档还原到对应版本。
-            </p>
-          </div>
-        </section>
+        <HistoryPanel
+          :snapshots="snapshots"
+          :active-snapshot-id="activeSnapshotId"
+          :history-collapsed="historyCollapsed"
+          v-model:snapshot-label="snapshotLabel"
+          @toggle-collapse="historyCollapsed = !historyCollapsed"
+          @create-snapshot="createHistorySnapshot"
+          @select-snapshot="void selectHistorySnapshot($event)"
+          @restore-snapshot="void restoreHistorySnapshot($event)"
+          @delete-snapshot="deleteHistorySnapshot"
+        />
       </aside>
-
       <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown">
         <header class="play-pane-head">
           <h3>Markdown</h3>
@@ -1983,20 +1705,8 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <section class="playground-capability card">
-      <h3>Playground 能力清单</h3>
-      <div class="cap-grid">
-        <article v-for="section in capabilitySections" :key="section.title" class="cap-card">
-          <h4>{{ section.title }}</h4>
-          <div class="cap-chips">
-            <span v-for="item in section.items" :key="item" class="cap-chip">{{ item }}</span>
-          </div>
-        </article>
-      </div>
-    </section>
-
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；按 <code>Ctrl+K</code> 打开功能面板（主题、只读、Markdown 面板与同步等）；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 
@@ -2068,6 +1778,10 @@ onBeforeUnmount(() => {
     @save="saveMindmap"
   />
 </template>
+
+
+
+
 
 
 
