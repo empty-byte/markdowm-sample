@@ -45,10 +45,21 @@ import {
   FLOWCHART_EDIT_REQUEST_EVENT,
   type FlowchartEditRequestDetail,
 } from '../features/editor-enhance/flowcharts'
+import {
+  createMindmapId,
+  createMindmapSource,
+  createMindmapToken,
+  getMindmapById,
+  upsertMindmap,
+  MINDMAP_EDIT_REQUEST_EVENT,
+  type MindmapEditRequestDetail,
+} from '../features/editor-enhance/mindmaps'
 import createWhiteboardNodeViewPlugin from '../features/editor-enhance/whiteboard-node-view'
 import createFlowchartNodeViewPlugin from '../features/editor-enhance/flowchart-node-view'
+import createMindmapNodeViewPlugin from '../features/editor-enhance/mindmap-node-view'
 import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
 import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
+import MindmapSimpleDialog from '../components/MindmapSimpleDialog.vue'
 import EmbedWebDialog from '../components/EmbedWebDialog.vue'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
@@ -91,6 +102,12 @@ interface WhiteboardSavePayload {
 }
 
 interface FlowchartSavePayload {
+  title: string
+  previewUrl: string
+  scene: unknown
+}
+
+interface MindmapSavePayload {
   title: string
   previewUrl: string
   scene: unknown
@@ -270,6 +287,12 @@ const flowchartEditTarget = ref<FlowchartEditRequestDetail | null>(null)
 const flowchartEditorTitle = ref('流程图')
 const flowchartEditorScene = ref<unknown>(null)
 
+const mindmapEditorVisible = ref(false)
+const mindmapEditorMode = ref<'insert' | 'edit'>('insert')
+const mindmapEditTarget = ref<MindmapEditRequestDetail | null>(null)
+const mindmapEditorTitle = ref('思维导图')
+const mindmapEditorScene = ref<unknown>(null)
+
 
 const featureFlags = ref<Record<CrepeFeature, boolean>>(
   crepeFeatureItems.reduce((acc, item) => {
@@ -347,6 +370,7 @@ const commentHighlight = $prose(() =>
 const embedNodeView = $prose(() => createEmbedNodeViewPlugin())
 const whiteboardNodeView = $prose(() => createWhiteboardNodeViewPlugin())
 const flowchartNodeView = $prose(() => createFlowchartNodeViewPlugin())
+const mindmapNodeView = $prose(() => createMindmapNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
 
@@ -479,6 +503,15 @@ const paletteActions = computed<PaletteAction[]>(() => {
       description: '打开流程图编辑弹框并插入到文档',
       run: () => {
         openFlowchartDialog()
+      },
+    },
+    {
+      id: 'insert-mindmap',
+      group: 'Insert',
+      label: '插入思维导图',
+      description: '打开思维导图编辑弹框并插入到文档',
+      run: () => {
+        openMindmapDialog()
       },
     }
   )
@@ -931,6 +964,14 @@ async function rebuildEditor(seed?: string) {
               openFlowchartDialog()
             },
           })
+
+          advancedGroup.addItem('mindmap', {
+            label: '思维导图',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M10.4 6.2L7.6 10.8"/><path d="M13.6 6.2L16.4 10.8"/><path d="M7.8 13.2L10.8 17"/><path d="M16.2 13.2L13.2 17"/></svg>',
+            onRun: () => {
+              openMindmapDialog()
+            },
+          })
         },
       },
       [CrepeFeature.Toolbar]: {
@@ -952,6 +993,7 @@ async function rebuildEditor(seed?: string) {
   instance.editor.use(embedNodeView)
   instance.editor.use(whiteboardNodeView)
   instance.editor.use(flowchartNodeView)
+  instance.editor.use(mindmapNodeView)
 
   instance.on((listener) => {
     listener.markdownUpdated((_ctx, next) => {
@@ -1418,6 +1460,168 @@ function onFlowchartEditRequest(event: Event) {
   openFlowchartEditDialog(customEvent.detail)
 }
 
+
+// ── Mindmap dialog ──
+
+function openMindmapDialog() {
+  mindmapEditorMode.value = 'insert'
+  mindmapEditTarget.value = null
+  mindmapEditorTitle.value = '思维导图'
+  mindmapEditorScene.value = null
+  mindmapEditorVisible.value = true
+}
+
+function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
+  mindmapEditorMode.value = 'edit'
+  mindmapEditTarget.value = detail
+
+  const stored = getMindmapById(detail.id)
+  mindmapEditorTitle.value = detail.title || stored?.title || '思维导图'
+  mindmapEditorScene.value = stored?.scene ?? null
+  mindmapEditorVisible.value = true
+}
+
+function closeMindmapEditor() {
+  mindmapEditorVisible.value = false
+  mindmapEditorMode.value = 'insert'
+  mindmapEditTarget.value = null
+  mindmapEditorTitle.value = '思维导图'
+  mindmapEditorScene.value = null
+}
+
+const mindmapTokenPattern = /!\[mindmap:([^\]]*)\]\((mindmap:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
+
+function clampMindmapPosition(value: number, maxPos: number): number {
+  if (!Number.isFinite(value)) return 0
+  const normalized = Math.floor(value)
+  if (normalized < 0) return 0
+  if (normalized > maxPos) return maxPos
+  return normalized
+}
+
+function resolveMindmapReplaceRange(
+  state: EditorView['state'],
+  target: { from: number; to: number } | null
+): { from: number; to: number } {
+  const maxPos = state.doc.content.size
+  const fallbackFrom = state.selection.from
+  const fallbackTo = state.selection.to
+
+  const from = clampMindmapPosition(target?.from ?? fallbackFrom, maxPos)
+  const to = clampMindmapPosition(target?.to ?? fallbackTo, maxPos)
+  return from <= to ? { from, to } : { from: to, to: from }
+}
+
+function findMindmapDocTarget(
+  doc: import('@milkdown/prose/model').Node,
+  id: string
+): { kind: 'token' | 'image'; from: number; to: number } | null {
+  let found: { kind: 'token' | 'image'; from: number; to: number } | null = null
+  const source = createMindmapSource(id)
+
+  doc.descendants((node, pos, parent) => {
+    if (found) return false
+
+    if (node.type.name === 'image' && String(node.attrs.src ?? '') === source) {
+      found = {
+        kind: 'image',
+        from: pos,
+        to: pos + node.nodeSize,
+      }
+      return false
+    }
+
+    if (!node.isText || !node.text) return
+    if (parent?.type?.spec?.code) return
+
+    mindmapTokenPattern.lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = mindmapTokenPattern.exec(node.text)) !== null) {
+      const matchSource = match[2] ?? ''
+      if (matchSource !== source) continue
+
+      const from = pos + match.index
+      const to = from + match[0].length
+      found = { kind: 'token', from, to }
+      break
+    }
+  })
+
+  return found
+}
+
+function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSavePayload) {
+  if (!crepe) return
+
+  const normalizedTitle = payload.title.trim() || '思维导图'
+  const existing = getMindmapById(detail.id)
+  const nextPreview = payload.previewUrl.trim() || existing?.previewUrl || ''
+  const record = upsertMindmap({
+    id: detail.id,
+    title: normalizedTitle,
+    previewUrl: nextPreview,
+    scene: payload.scene,
+  })
+  const token = createMindmapToken(normalizedTitle, record.id)
+
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    const { state } = view
+    const currentTarget = findMindmapDocTarget(state.doc, record.id) ?? detail
+    const range = resolveMindmapReplaceRange(state, currentTarget)
+    let tr = state.tr.insertText(token, range.from, range.to)
+
+    if (!tr.docChanged) {
+      tr = tr.setMeta('mindmap-refresh', Date.now())
+    }
+
+    view.dispatch(tr)
+    view.focus()
+  })
+
+  crepe.editor.action(forceUpdate())
+}
+
+function saveMindmap(payload: MindmapSavePayload) {
+  const target = mindmapEditTarget.value
+
+  if (mindmapEditorMode.value === 'edit' && target) {
+    applyMindmapEdit(target, payload)
+    closeMindmapEditor()
+    return
+  }
+
+  const id = createMindmapId()
+  const normalizedTitle = payload.title.trim() || '思维导图'
+  upsertMindmap({
+    id,
+    title: normalizedTitle,
+    previewUrl: payload.previewUrl.trim(),
+    scene: payload.scene,
+  })
+  const token = createMindmapToken(normalizedTitle, id)
+
+  if (crepe) {
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      const { state } = view
+      const tr = state.tr.insertText(`\n${token}\n`, state.selection.from, state.selection.to)
+      view.dispatch(tr)
+      view.focus()
+    })
+
+    crepe.editor.action(forceUpdate())
+  }
+
+  closeMindmapEditor()
+}
+
+function onMindmapEditRequest(event: Event) {
+  const customEvent = event as CustomEvent<MindmapEditRequestDetail>
+  if (!customEvent.detail) return
+  openMindmapEditDialog(customEvent.detail)
+}
 function onGlobalKeydown(event: KeyboardEvent) {
   const key = event.key.toLowerCase()
   if ((event.ctrlKey || event.metaKey) && key === 'k') {
@@ -1492,6 +1696,7 @@ onMounted(async () => {
   window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.addEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
   window.addEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
+  window.addEventListener(MINDMAP_EDIT_REQUEST_EVENT, onMindmapEditRequest as EventListener)
   yComments.observe(syncCommentsFromSharedState)
   ySnapshots.observe(syncSnapshotsFromSharedState)
   provider.awareness?.on('change', refreshCollaborators)
@@ -1506,6 +1711,7 @@ onBeforeUnmount(() => {
   window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.removeEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
   window.removeEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
+  window.removeEventListener(MINDMAP_EDIT_REQUEST_EVENT, onMindmapEditRequest as EventListener)
 
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
@@ -1852,7 +2058,23 @@ onBeforeUnmount(() => {
     @cancel="closeFlowchartEditor"
     @save="saveFlowchart"
   />
+
+  <MindmapSimpleDialog
+    v-if="mindmapEditorVisible"
+    :mode="mindmapEditorMode"
+    :title="mindmapEditorTitle"
+    :initial-scene="mindmapEditorScene"
+    @cancel="closeMindmapEditor"
+    @save="saveMindmap"
+  />
 </template>
+
+
+
+
+
+
+
 
 
 

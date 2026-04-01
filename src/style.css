@@ -1355,3 +1355,37 @@ code {
 }
 
 
+
+.mindmap-inline-card {
+  margin: 10px 0;
+}
+
+.mindmap-inline-card .mindmap-preview-wrap {
+  width: 100%;
+  min-height: 220px;
+  background: linear-gradient(180deg, #f8fbff, #eff5fd);
+  border-bottom: 1px solid #e2ebf6;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.mindmap-inline-card .mindmap-preview-wrap img {
+  width: 100%;
+  max-height: 460px;
+  display: block;
+  object-fit: contain;
+  background: #fff;
+}
+
+.mindmap-inline-card .mindmap-preview-empty {
+  padding: 22px 18px;
+  color: #5d7087;
+  font-size: 13px;
+  text-align: center;
+}
+
+.mindmap-token-hidden {
+  display: none;
+}
+
