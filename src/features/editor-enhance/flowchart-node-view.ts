@@ -1,4 +1,4 @@
-﻿import { Plugin, PluginKey } from '@milkdown/prose/state'
+import { Plugin, PluginKey } from '@milkdown/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/prose/view'
 import type { EditorView } from '@milkdown/prose/view'
 import type { Node as ProsemirrorNode } from '@milkdown/prose/model'
@@ -24,7 +24,13 @@ interface FlowchartWidget {
 
 const flowchartTokenPattern = /!\[flowchart:([^\]]*)\]\((flowchart:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
 
+/**
+ * Handle collectFlowchartWidgets logic.
+ * @param doc - Parameter.
+ * @returns Return value.
+ */
 function collectFlowchartWidgets(doc: ProsemirrorNode): FlowchartWidget[] {
+  // Scan both rendered image nodes and raw token text so migration states both work.
   const results: FlowchartWidget[] = []
 
   doc.descendants((node, pos, parent) => {
@@ -81,17 +87,34 @@ function collectFlowchartWidgets(doc: ProsemirrorNode): FlowchartWidget[] {
   return results
 }
 
+/**
+ * Handle stopMouseDown logic.
+ * @param event - Parameter.
+ */
 function stopMouseDown(event: MouseEvent): void {
+  // Keep editor selection stable when interacting with widget controls.
   event.preventDefault()
   event.stopPropagation()
 }
 
+/**
+ * Handle stopAction logic.
+ * @param event - Parameter.
+ */
 function stopAction(event: MouseEvent): void {
+  // Action buttons should not bubble into ProseMirror click handlers.
   event.preventDefault()
   event.stopPropagation()
 }
 
+/**
+ * Handle createFlowchartWidget logic.
+ * @param widget - Parameter.
+ * @param view - Parameter.
+ * @returns Return value.
+ */
 function createFlowchartWidget(widget: FlowchartWidget, view: EditorView): HTMLElement {
+  // Build non-editable card UI shown inline in the document.
   const wrapper = document.createElement('div')
   wrapper.className = 'embed-inline-card flowchart-inline-card'
   wrapper.contentEditable = 'false'
@@ -175,6 +198,7 @@ function createFlowchartWidget(widget: FlowchartWidget, view: EditorView): HTMLE
 }
 
 export default function createFlowchartNodeViewPlugin() {
+  // Render flowchart widgets via decorations while hiding original token/image content.
   return new Plugin({
     key: flowchartNodeViewPluginKey,
     props: {

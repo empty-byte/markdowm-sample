@@ -31,7 +31,12 @@ const hasActiveSnapshot = computed(() =>
 
 const snapshotCountLabel = computed(() => `${props.snapshots.length} 条历史记录`)
 
+/**
+ * Handle formatTime logic.
+ * @param time - Parameter.
+ */
 function formatTime(time: number) {
+  // Unified short timestamp format used in snapshot cards.
   return new Date(time).toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
@@ -40,7 +45,13 @@ function formatTime(time: number) {
   })
 }
 
+/**
+ * Handle parseSnapshotMarkdown logic.
+ * @param content - Parameter.
+ * @returns Return value.
+ */
 function parseSnapshotMarkdown(content: string): string {
+  // New snapshots store JSON payload; old snapshots might be plain markdown string.
   try {
     const parsed = JSON.parse(content) as { markdown?: unknown }
     if (typeof parsed.markdown === 'string') return parsed.markdown
@@ -51,7 +62,12 @@ function parseSnapshotMarkdown(content: string): string {
   return content
 }
 
+/**
+ * Handle getSnapshotPreview logic.
+ * @param snapshot - Parameter.
+ */
 function getSnapshotPreview(snapshot: HistorySnapshot) {
+  // Render compact preview as "first line / last line" for quick scanning.
   const snapshotMarkdown = parseSnapshotMarkdown(snapshot.content)
   const lines = snapshotMarkdown
     .split('\n')

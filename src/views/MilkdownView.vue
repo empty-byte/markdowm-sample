@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { editorViewCtx } from '@milkdown/core'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
@@ -481,14 +481,23 @@ const collaboratorCountLabel = computed(() => {
   return `${collaborators.value.length} 位协作者在线`
 })
 
+/**
+ * Handle getFeatureFlags logic.
+ */
 function getFeatureFlags() {
+  // Translate UI toggle map into Crepe feature config shape.
   return crepeFeatureItems.reduce((acc, item) => {
     acc[item.key] = featureFlags.value[item.key]
     return acc
   }, {} as Partial<Record<CrepeFeature, boolean>>)
 }
 
+/**
+ * Handle getEditorView logic.
+ * @returns Return value.
+ */
 function getEditorView(): EditorView | null {
+  // Access current ProseMirror view through Milkdown context.
   if (!crepe) return null
 
   let view: EditorView | null = null
@@ -499,7 +508,13 @@ function getEditorView(): EditorView | null {
   return view
 }
 
+/**
+ * Handle isEditorCommentRecord logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function isEditorCommentRecord(value: unknown): value is EditorComment {
+  // Runtime guard for data coming from shared Yjs state.
   if (!value || typeof value !== 'object') return false
 
   const item = value as EditorComment
@@ -514,7 +529,13 @@ function isEditorCommentRecord(value: unknown): value is EditorComment {
   )
 }
 
+/**
+ * Handle isHistorySnapshotRecord logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function isHistorySnapshotRecord(value: unknown): value is HistorySnapshot {
+  // Runtime guard for snapshot list synced from Yjs/local state.
   if (!value || typeof value !== 'object') return false
 
   const item = value as HistorySnapshot
@@ -526,7 +547,13 @@ function isHistorySnapshotRecord(value: unknown): value is HistorySnapshot {
   )
 }
 
+/**
+ * Handle isCollaboratorIdentity logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function isCollaboratorIdentity(value: unknown): value is CollaboratorIdentity {
+  // Awareness payload may be arbitrary; validate before rendering presence UI.
   if (!value || typeof value !== 'object') return false
 
   const item = value as CollaboratorIdentity
@@ -537,29 +564,51 @@ function isCollaboratorIdentity(value: unknown): value is CollaboratorIdentity {
   )
 }
 
+/**
+ * Handle syncCommentsFromSharedState logic.
+ */
 function syncCommentsFromSharedState() {
+  // Pull latest comments from Y.Array and drop invalid records.
   comments.value = yComments.toArray().filter(isEditorCommentRecord)
 }
 
+/**
+ * Handle syncSnapshotsFromSharedState logic.
+ */
 function syncSnapshotsFromSharedState() {
+  // Pull latest snapshots from Y.Array and drop invalid records.
   snapshots.value = ySnapshots.toArray().filter(isHistorySnapshotRecord)
 }
 
+/**
+ * Handle replaceSharedComments logic.
+ * @param next - Parameter.
+ */
 function replaceSharedComments(next: EditorComment[]) {
+  // Replace whole list in one transaction to keep peer updates atomic.
   ydoc.transact(() => {
     yComments.delete(0, yComments.length)
     if (next.length) yComments.insert(0, next)
   })
 }
 
+/**
+ * Handle replaceSharedSnapshots logic.
+ * @param next - Parameter.
+ */
 function replaceSharedSnapshots(next: HistorySnapshot[]) {
+  // Replace whole list in one transaction to keep peer updates atomic.
   ydoc.transact(() => {
     ySnapshots.delete(0, ySnapshots.length)
     if (next.length) ySnapshots.insert(0, next)
   })
 }
 
+/**
+ * Handle refreshCollaborators logic.
+ */
 function refreshCollaborators() {
+  // Rebuild collaborator list from awareness states and keep local user on top.
   const awarenessStates = provider.awareness?.getStates()
   if (!awarenessStates) {
     collaborators.value = []
@@ -587,12 +636,20 @@ function refreshCollaborators() {
   })
 }
 
+/**
+ * Handle syncLocalAwareness logic.
+ */
 function syncLocalAwareness() {
+  // Publish current user identity to awareness channel.
   provider.awareness?.setLocalStateField('user', localCollaborator)
   refreshCollaborators()
 }
 
+/**
+ * Handle getCurrentMarkdownSnapshot logic.
+ */
 function getCurrentMarkdownSnapshot() {
+  // Read markdown from editor when available; fallback to reactive pane value.
   if (!crepe) return markdown.value
 
   try {
@@ -602,7 +659,11 @@ function getCurrentMarkdownSnapshot() {
   }
 }
 
+/**
+ * Handle serializeSnapshotPayload logic.
+ */
 function serializeSnapshotPayload() {
+  // Snapshot stores both markdown and comments to support full rollback.
   const latestMarkdown = getCurrentMarkdownSnapshot()
 
   if (latestMarkdown !== markdown.value) {
@@ -617,7 +678,13 @@ function serializeSnapshotPayload() {
   return JSON.stringify(payload)
 }
 
+/**
+ * Handle parseSnapshotPayload logic.
+ * @param content - Parameter.
+ * @returns Return value.
+ */
 function parseSnapshotPayload(content: string): SnapshotPayload {
+  // Backward compatible parser: JSON payload first, plain markdown fallback.
   try {
     const parsed = JSON.parse(content) as Partial<SnapshotPayload>
     if (typeof parsed.markdown === 'string') {
@@ -638,11 +705,20 @@ function parseSnapshotPayload(content: string): SnapshotPayload {
   }
 }
 
+/**
+ * Handle getDefaultSnapshotLabel logic.
+ */
 function getDefaultSnapshotLabel() {
+  // Human-friendly incremental default label for manual snapshots.
   return `手动快照 ${snapshots.value.length + 1}`
 }
 
+/**
+ * Handle findCommentByPosition logic.
+ * @param pos - Parameter.
+ */
 function findCommentByPosition(pos: number) {
+  // Resolve editor click position to its owning comment anchor range.
   return (
     comments.value.find((item) => {
       const from = Math.min(item.from, item.to)
@@ -652,7 +728,12 @@ function findCommentByPosition(pos: number) {
   )
 }
 
+/**
+ * Handle activateCommentById logic.
+ * @param id - Parameter.
+ */
 function activateCommentById(id: string) {
+  // Activate comment card and sync highlight state in editor.
   const comment = comments.value.find((item) => item.id === id)
   if (!comment) return
 
@@ -664,11 +745,19 @@ function activateCommentById(id: string) {
   })
 }
 
+/**
+ * Handle refreshCommentHighlight logic.
+ */
 function refreshCommentHighlight() {
+  // Trigger ProseMirror decoration refresh for comment anchor marks.
   crepe?.editor.action(forceUpdate())
 }
 
+/**
+ * Handle syncSelectionState logic.
+ */
 function syncSelectionState(selection?: Selection) {
+  // Convert current editor selection into a quote payload for comment creation.
   const view = getEditorView()
   const currentSelection = selection ?? view?.state.selection
 
@@ -693,13 +782,22 @@ function syncSelectionState(selection?: Selection) {
   }
 }
 
+/**
+ * Handle updateActiveCommentRange logic.
+ */
 function updateActiveCommentRange() {
+  // Keep active highlight range aligned with currently selected comment.
   const current = comments.value.find((item) => item.id === activeCommentId.value)
   activeCommentRange.value = current ? { from: current.from, to: current.to } : null
   refreshCommentHighlight()
 }
 
+/**
+ * Handle focusComment logic.
+ * @param comment - Parameter.
+ */
 function focusComment(comment: EditorComment) {
+  // Jump editor selection to comment anchor and bring sidebar card into view.
   activateCommentById(comment.id)
 
   crepe?.editor.action((ctx) => {
@@ -717,7 +815,11 @@ function focusComment(comment: EditorComment) {
   })
 }
 
+/**
+ * Handle submitComment logic.
+ */
 function submitComment() {
+  // Validate draft + selection, append comment, then focus newly created item.
   if (!selectedRange.value) return
 
   const text = commentDraft.value.trim()
@@ -736,7 +838,11 @@ function submitComment() {
   focusComment(next[0])
 }
 
+/**
+ * Handle beginCommentFromSelection logic.
+ */
 function beginCommentFromSelection() {
+  // Prepare highlight for current selection and move focus to comment input.
   syncSelectionState()
   if (!selectedRange.value) return
 
@@ -752,7 +858,11 @@ function beginCommentFromSelection() {
   })
 }
 
+/**
+ * Handle createHistorySnapshot logic.
+ */
 function createHistorySnapshot() {
+  // Persist current markdown + comments as a new manual snapshot.
   const label = snapshotLabel.value.trim() || getDefaultSnapshotLabel()
   const next = createSnapshot(snapshots.value, {
     label,
@@ -764,7 +874,12 @@ function createHistorySnapshot() {
   snapshotLabel.value = ''
 }
 
+/**
+ * Handle restoreHistorySnapshot logic.
+ * @param snapshot - Parameter.
+ */
 async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
+  // Restore both editor content and comment state from selected snapshot payload.
   const payload = parseSnapshotPayload(snapshot.content)
   activeSnapshotId.value = snapshot.id
   snapshotLabel.value = snapshot.label
@@ -780,11 +895,20 @@ async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
   refreshCommentHighlight()
 }
 
+/**
+ * Handle selectHistorySnapshot logic.
+ * @param snapshot - Parameter.
+ */
 async function selectHistorySnapshot(snapshot: HistorySnapshot) {
   await restoreHistorySnapshot(snapshot)
 }
 
+/**
+ * Handle deleteHistorySnapshot logic.
+ * @param id - Parameter.
+ */
 function deleteHistorySnapshot(id: string) {
+  // Remove snapshot and keep active pointer valid.
   replaceSharedSnapshots(removeSnapshot(snapshots.value, id))
 
   if (activeSnapshotId.value === id) {
@@ -792,7 +916,12 @@ function deleteHistorySnapshot(id: string) {
   }
 }
 
+/**
+ * Handle deleteComment logic.
+ * @param id - Parameter.
+ */
 function deleteComment(id: string) {
+  // Remove comment and update active highlight fallback.
   replaceSharedComments(removeComment(comments.value, id))
 
   if (activeCommentId.value === id) {
@@ -801,14 +930,22 @@ function deleteComment(id: string) {
   }
 }
 
+/**
+ * Handle destroyEditor logic.
+ */
 async function destroyEditor() {
+  // Destroy current Crepe instance before full rebuild/theme reconfiguration.
   if (!crepe) return
   const current = crepe
   crepe = null
   await current.destroy()
 }
 
+/**
+ * Handle rebuildEditor logic.
+ */
 async function rebuildEditor(seed?: string) {
+  // Recreate editor with latest feature toggles and custom block/toolbar hooks.
   if (!host.value) return
 
   const version = ++rebuildVersion
@@ -927,13 +1064,22 @@ async function rebuildEditor(seed?: string) {
   isRebuilding.value = false
 }
 
+/**
+ * Handle applyMarkdownFromPane logic.
+ */
 async function applyMarkdownFromPane() {
+  // Manually apply right markdown pane content into visual editor.
   if (!crepe || syncingFromEditor) return
 
   await syncEditorMarkdown(markdown.value)
 }
 
+/**
+ * Handle syncEditorMarkdown logic.
+ * @param nextMarkdown - Parameter.
+ */
 async function syncEditorMarkdown(nextMarkdown: string) {
+  // Prefer collab template update path; fallback to local replaceAll.
   if (!crepe || syncingFromEditor) return
 
   syncingFromPane = true
@@ -952,7 +1098,11 @@ async function syncEditorMarkdown(nextMarkdown: string) {
   updateActiveCommentRange()
 }
 
+/**
+ * Handle scheduleApplyMarkdownFromPane logic.
+ */
 function scheduleApplyMarkdownFromPane() {
+  // Debounce markdown pane typing to avoid expensive per-keystroke updates.
   if (!autoSyncMarkdown.value) return
   if (syncTimer) clearTimeout(syncTimer)
 
@@ -961,6 +1111,9 @@ function scheduleApplyMarkdownFromPane() {
   }, 120)
 }
 
+/**
+ * Handle resetSampleMarkdown logic.
+ */
 async function resetSampleMarkdown() {
   markdown.value = initialMarkdown
   await applyMarkdownFromPane()
@@ -970,7 +1123,11 @@ async function resetSampleMarkdown() {
   updateActiveCommentRange()
 }
 
+/**
+ * Handle copyMarkdown logic.
+ */
 async function copyMarkdown() {
+  // Clipboard helper for quick export/debug usage.
   try {
     await navigator.clipboard.writeText(markdown.value)
     copied.value = true
@@ -983,18 +1140,30 @@ async function copyMarkdown() {
   }
 }
 
+/**
+ * Handle connectCollab logic.
+ */
 function connectCollab() {
+  // Enable desired collab state; watch() handles actual socket connect.
   collabWanted.value = true
   syncLocalAwareness()
 }
 
+/**
+ * Handle disconnectCollab logic.
+ */
 function disconnectCollab() {
+  // Clear awareness + mark collab as off for deterministic disconnect flow.
   provider.awareness?.setLocalState(null)
   collabWanted.value = false
   refreshCollaborators()
 }
 
+/**
+ * Handle openPalette logic.
+ */
 function openPalette() {
+  // Open command palette and focus search input.
   paletteVisible.value = true
   paletteQuery.value = ''
   paletteIndex.value = 0
@@ -1003,24 +1172,41 @@ function openPalette() {
   })
 }
 
+/**
+ * Handle closePalette logic.
+ */
 function closePalette() {
   paletteVisible.value = false
   paletteQuery.value = ''
   paletteIndex.value = 0
 }
 
+/**
+ * Handle movePalette logic.
+ * @param step - Parameter.
+ */
 function movePalette(step: 1 | -1) {
   const size = filteredPaletteActions.value.length
   if (!size) return
   paletteIndex.value = (paletteIndex.value + step + size) % size
 }
 
+/**
+ * Handle runPaletteAction logic.
+ * @param item - Parameter.
+ */
 function runPaletteAction(item: PaletteAction) {
+  // Execute action and close menu to mirror command palette UX conventions.
   item.run()
   closePalette()
 }
 
+/**
+ * Handle onPaletteKeydown logic.
+ * @param event - Parameter.
+ */
 function onPaletteKeydown(event: KeyboardEvent) {
+  // Keyboard navigation for command menu list.
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     movePalette(1)
@@ -1046,27 +1232,46 @@ function onPaletteKeydown(event: KeyboardEvent) {
   if (current) runPaletteAction(current)
 }
 
-// ── Embed dialog ──
 
+/**
+ * Handle openEmbedDialog logic.
+ */
 function openEmbedDialog() {
+  // Open insert mode with clean state.
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
   embedDialogVisible.value = true
 }
 
+/**
+ * Handle openEmbedEditDialog logic.
+ * @param detail - Parameter.
+ */
 function openEmbedEditDialog(detail: EmbedEditRequestDetail) {
+  // Open edit mode with node range metadata from NodeView event.
   embedDialogMode.value = 'edit'
   embedEditTarget.value = detail
   embedDialogVisible.value = true
 }
 
+/**
+ * Handle closeEmbedDialog logic.
+ */
 function closeEmbedDialog() {
+  // Reset dialog state to default insert mode.
   embedDialogVisible.value = false
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
 }
 
+/**
+ * Handle applyEmbedEdit logic.
+ * @param detail - Parameter.
+ * @param title - Parameter.
+ * @param url - Parameter.
+ */
 function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: string) {
+  // Replace token text or image node in-place depending on source kind.
   if (!crepe) return
   const token = createEmbedToken(title, url)
 
@@ -1096,7 +1301,12 @@ function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: stri
   })
 }
 
+/**
+ * Handle confirmEmbed logic.
+ * @param payload - Parameter.
+ */
 function confirmEmbed(payload: { url: string; title: string }) {
+  // Shared submit handler for both insert and edit paths.
   const url = payload.url.trim()
   if (!isValidEmbedUrl(url)) return
 
@@ -1124,16 +1334,24 @@ function confirmEmbed(payload: { url: string; title: string }) {
   closeEmbedDialog()
 }
 
+/**
+ * Handle onEmbedEditRequest logic.
+ * @param event - Parameter.
+ */
 function onEmbedEditRequest(event: Event) {
+  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<EmbedEditRequestDetail>
   if (!customEvent.detail) return
   openEmbedEditDialog(customEvent.detail)
 }
 
 
-// ── Whiteboard dialog ──
 
+/**
+ * Handle openWhiteboardDialog logic.
+ */
 function openWhiteboardDialog() {
+  // Open insert mode with fresh title/scene.
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
   whiteboardEditorTitle.value = '白板'
@@ -1141,7 +1359,12 @@ function openWhiteboardDialog() {
   whiteboardEditorVisible.value = true
 }
 
+/**
+ * Handle openWhiteboardEditDialog logic.
+ * @param detail - Parameter.
+ */
 function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
+  // Load persisted whiteboard scene before opening editor.
   whiteboardEditorMode.value = 'edit'
   whiteboardEditTarget.value = detail
 
@@ -1151,7 +1374,11 @@ function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
   whiteboardEditorVisible.value = true
 }
 
+/**
+ * Handle closeWhiteboardEditor logic.
+ */
 function closeWhiteboardEditor() {
+  // Fully clear editor state so stale payload is not reused next time.
   whiteboardEditorVisible.value = false
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
@@ -1159,7 +1386,13 @@ function closeWhiteboardEditor() {
   whiteboardEditorScene.value = null
 }
 
+/**
+ * Handle applyWhiteboardEdit logic.
+ * @param detail - Parameter.
+ * @param payload - Parameter.
+ */
 function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: WhiteboardSavePayload) {
+  // Persist whiteboard record then replace corresponding markdown range.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '白板'
@@ -1200,7 +1433,12 @@ function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: White
   crepe.editor.action(forceUpdate())
 }
 
+/**
+ * Handle saveWhiteboard logic.
+ * @param payload - Parameter.
+ */
 function saveWhiteboard(payload: WhiteboardSavePayload) {
+  // Route save operation to edit/insert branch.
   const target = whiteboardEditTarget.value
 
   if (whiteboardEditorMode.value === 'edit' && target) {
@@ -1234,15 +1472,23 @@ function saveWhiteboard(payload: WhiteboardSavePayload) {
   closeWhiteboardEditor()
 }
 
+/**
+ * Handle onWhiteboardEditRequest logic.
+ * @param event - Parameter.
+ */
 function onWhiteboardEditRequest(event: Event) {
+  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<WhiteboardEditRequestDetail>
   if (!customEvent.detail) return
   openWhiteboardEditDialog(customEvent.detail)
 }
 
-// ── Flowchart dialog ──
 
+/**
+ * Handle openFlowchartDialog logic.
+ */
 function openFlowchartDialog() {
+  // Open insert mode with fresh title/scene.
   flowchartEditorMode.value = 'insert'
   flowchartEditTarget.value = null
   flowchartEditorTitle.value = '流程图'
@@ -1250,7 +1496,12 @@ function openFlowchartDialog() {
   flowchartEditorVisible.value = true
 }
 
+/**
+ * Handle openFlowchartEditDialog logic.
+ * @param detail - Parameter.
+ */
 function openFlowchartEditDialog(detail: FlowchartEditRequestDetail) {
+  // Load persisted flowchart scene before opening editor.
   flowchartEditorMode.value = 'edit'
   flowchartEditTarget.value = detail
 
@@ -1260,7 +1511,11 @@ function openFlowchartEditDialog(detail: FlowchartEditRequestDetail) {
   flowchartEditorVisible.value = true
 }
 
+/**
+ * Handle closeFlowchartEditor logic.
+ */
 function closeFlowchartEditor() {
+  // Fully clear editor state so stale payload is not reused next time.
   flowchartEditorVisible.value = false
   flowchartEditorMode.value = 'insert'
   flowchartEditTarget.value = null
@@ -1268,7 +1523,13 @@ function closeFlowchartEditor() {
   flowchartEditorScene.value = null
 }
 
+/**
+ * Handle applyFlowchartEdit logic.
+ * @param detail - Parameter.
+ * @param payload - Parameter.
+ */
 function applyFlowchartEdit(detail: FlowchartEditRequestDetail, payload: FlowchartSavePayload) {
+  // Persist flowchart record then replace corresponding markdown range.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '流程图'
@@ -1311,7 +1572,12 @@ function applyFlowchartEdit(detail: FlowchartEditRequestDetail, payload: Flowcha
   crepe.editor.action(forceUpdate())
 }
 
+/**
+ * Handle saveFlowchart logic.
+ * @param payload - Parameter.
+ */
 function saveFlowchart(payload: FlowchartSavePayload) {
+  // Route save operation to edit/insert branch.
   const target = flowchartEditTarget.value
 
   if (flowchartEditorMode.value === 'edit' && target) {
@@ -1345,16 +1611,24 @@ function saveFlowchart(payload: FlowchartSavePayload) {
   closeFlowchartEditor()
 }
 
+/**
+ * Handle onFlowchartEditRequest logic.
+ * @param event - Parameter.
+ */
 function onFlowchartEditRequest(event: Event) {
+  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<FlowchartEditRequestDetail>
   if (!customEvent.detail) return
   openFlowchartEditDialog(customEvent.detail)
 }
 
 
-// ── Mindmap dialog ──
 
+/**
+ * Handle openMindmapDialog logic.
+ */
 function openMindmapDialog() {
+  // Open insert mode with fresh title/scene.
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
   mindmapEditorTitle.value = '思维导图'
@@ -1362,7 +1636,12 @@ function openMindmapDialog() {
   mindmapEditorVisible.value = true
 }
 
+/**
+ * Handle openMindmapEditDialog logic.
+ * @param detail - Parameter.
+ */
 function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
+  // Load persisted mindmap scene before opening editor.
   mindmapEditorMode.value = 'edit'
   mindmapEditTarget.value = detail
 
@@ -1372,7 +1651,11 @@ function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
   mindmapEditorVisible.value = true
 }
 
+/**
+ * Handle closeMindmapEditor logic.
+ */
 function closeMindmapEditor() {
+  // Fully clear editor state so stale payload is not reused next time.
   mindmapEditorVisible.value = false
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
@@ -1382,7 +1665,14 @@ function closeMindmapEditor() {
 
 const mindmapTokenPattern = /!\[mindmap:([^\]]*)\]\((mindmap:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
 
+/**
+ * Handle clampMindmapPosition logic.
+ * @param value - Parameter.
+ * @param maxPos - Parameter.
+ * @returns Return value.
+ */
 function clampMindmapPosition(value: number, maxPos: number): number {
+  // Guard against invalid/overflow ranges before applying text replacement.
   if (!Number.isFinite(value)) return 0
   const normalized = Math.floor(value)
   if (normalized < 0) return 0
@@ -1390,10 +1680,16 @@ function clampMindmapPosition(value: number, maxPos: number): number {
   return normalized
 }
 
+/**
+ * Handle resolveMindmapReplaceRange logic.
+ * @param state - Parameter.
+ * @param target - Parameter.
+ */
 function resolveMindmapReplaceRange(
   state: EditorView['state'],
   target: { from: number; to: number } | null
 ): { from: number; to: number } {
+  // Build a safe replacement range using target range or current selection fallback.
   const maxPos = state.doc.content.size
   const fallbackFrom = state.selection.from
   const fallbackTo = state.selection.to
@@ -1403,10 +1699,16 @@ function resolveMindmapReplaceRange(
   return from <= to ? { from, to } : { from: to, to: from }
 }
 
+/**
+ * Handle findMindmapDocTarget logic.
+ * @param doc - Parameter.
+ * @param id - Parameter.
+ */
 function findMindmapDocTarget(
   doc: import('@milkdown/prose/model').Node,
   id: string
 ): { kind: 'token' | 'image'; from: number; to: number } | null {
+  // Find latest token/image range by id to avoid stale edit ranges.
   let found: { kind: 'token' | 'image'; from: number; to: number } | null = null
   const source = createMindmapSource(id)
 
@@ -1442,7 +1744,13 @@ function findMindmapDocTarget(
   return found
 }
 
+/**
+ * Handle applyMindmapEdit logic.
+ * @param detail - Parameter.
+ * @param payload - Parameter.
+ */
 function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSavePayload) {
+  // Persist mindmap record and replace current token range with fresh content.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '思维导图'
@@ -1474,7 +1782,12 @@ function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSave
   crepe.editor.action(forceUpdate())
 }
 
+/**
+ * Handle saveMindmap logic.
+ * @param payload - Parameter.
+ */
 function saveMindmap(payload: MindmapSavePayload) {
+  // Route save operation to edit/insert branch.
   const target = mindmapEditTarget.value
 
   if (mindmapEditorMode.value === 'edit' && target) {
@@ -1508,12 +1821,22 @@ function saveMindmap(payload: MindmapSavePayload) {
   closeMindmapEditor()
 }
 
+/**
+ * Handle onMindmapEditRequest logic.
+ * @param event - Parameter.
+ */
 function onMindmapEditRequest(event: Event) {
+  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<MindmapEditRequestDetail>
   if (!customEvent.detail) return
   openMindmapEditDialog(customEvent.detail)
 }
+/**
+ * Handle onGlobalKeydown logic.
+ * @param event - Parameter.
+ */
 function onGlobalKeydown(event: KeyboardEvent) {
+  // Global keyboard shortcuts: command palette toggle/close.
   const key = event.key.toLowerCase()
   if ((event.ctrlKey || event.metaKey) && key === 'k') {
     event.preventDefault()
@@ -1528,10 +1851,12 @@ function onGlobalKeydown(event: KeyboardEvent) {
 }
 
 watch(activeCommentId, () => {
+  // Active comment changes should immediately refresh editor highlight.
   updateActiveCommentRange()
 })
 
 watch(comments, (items) => {
+  // Keep active comment pointer valid when list updates from local/remote edits.
   if (!items.length) {
     activeCommentId.value = null
     activeCommentRange.value = null
@@ -1552,6 +1877,7 @@ watch(comments, (items) => {
 watch(
   featureFlags,
   () => {
+    // Feature toggles require full editor rebuild because Crepe features are init-time options.
     void rebuildEditor()
   },
   { deep: true }
@@ -1562,6 +1888,7 @@ watch(readonlyMode, (value) => {
 })
 
 watch(collabWanted, (value) => {
+  // Desired collab state switch; connection state UI updates via provider status event.
   if (value) {
     syncLocalAwareness()
     void websocketProvider.connect()
@@ -1583,6 +1910,7 @@ watch(filteredPaletteActions, (items) => {
 })
 
 onMounted(async () => {
+  // Wire global events + Yjs observers, then create initial editor instance.
   window.addEventListener('keydown', onGlobalKeydown)
   window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.addEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
@@ -1598,6 +1926,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  // Release all listeners/providers/timers to avoid leaks across route changes.
   window.removeEventListener('keydown', onGlobalKeydown)
   window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.removeEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
@@ -1620,11 +1949,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="page milk-playground-page">
-    <h1>Milkdown Playground（评论 + 历史记录版）</h1>
-    <p class="subtitle">
-      保留 Milkdown 单方案，并补齐飞书式评论与手动历史记录：选中文本评论、锚点定位、创建快照、按版本还原。
-    </p>
-
+    <h1>markdown富文本</h1>
     <div class="toolbar">
       <button type="button" class="btn" @click="connectCollab">连接协同</button>
       <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>

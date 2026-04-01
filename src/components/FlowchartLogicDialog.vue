@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import LogicFlow from '@logicflow/core'
 import { BpmnElement, MiniMap, Snapshot } from '@logicflow/extension'
@@ -97,6 +97,10 @@ const paletteItems: PaletteItem[] = [
 
 const paletteItemMap = new Map<PaletteNodeType, PaletteItem>(paletteItems.map((item) => [item.key, item]))
 
+/**
+ * Handle createDefaultNodeStyleForm logic.
+ * @returns Return value.
+ */
 function createDefaultNodeStyleForm(): FlowchartNodeStyleForm {
   return {
     text: '',
@@ -177,10 +181,20 @@ watch(
   }
 )
 
+/**
+ * Handle asRecord logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
+/**
+ * Handle extractNodeText logic.
+ * @param text - Parameter.
+ * @returns Return value.
+ */
 function extractNodeText(text: unknown): string {
   if (typeof text === 'string') return text
   if (text && typeof text === 'object') {
@@ -190,24 +204,45 @@ function extractNodeText(text: unknown): string {
   return ''
 }
 
+/**
+ * Handle toClampedNumber logic.
+ * @param value - Parameter.
+ * @param fallback - Parameter.
+ * @param min - Parameter.
+ * @param max - Parameter.
+ * @returns Return value.
+ */
 function toClampedNumber(value: unknown, fallback: number, min: number, max: number): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
   return Math.min(max, Math.max(min, parsed))
 }
 
+/**
+ * Handle getNodeIdFromEventPayload logic.
+ * @param payload - Parameter.
+ * @returns Return value.
+ */
 function getNodeIdFromEventPayload(payload: unknown): string | null {
   const data = asRecord(asRecord(payload).data)
   const id = data.id
   return typeof id === 'string' && id ? id : null
 }
 
+/**
+ * Handle clearSelectedNode logic.
+ */
 function clearSelectedNode() {
   selectedNodeId.value = null
   selectedNodeType.value = ''
   nodeStyleForm.value = createDefaultNodeStyleForm()
 }
 
+/**
+ * Handle readSelectedNodeStyle logic.
+ * @param nodeId - Parameter.
+ * @returns Return value.
+ */
 function readSelectedNodeStyle(nodeId: string): FlowchartNodeStyleForm | null {
   if (!lf) return null
   const nodeData = lf.getNodeDataById(nodeId) as { text?: unknown } | undefined
@@ -231,6 +266,10 @@ function readSelectedNodeStyle(nodeId: string): FlowchartNodeStyleForm | null {
   }
 }
 
+/**
+ * Handle selectNode logic.
+ * @param nodeId - Parameter.
+ */
 function selectNode(nodeId: string) {
   if (!lf) return
   const nodeModel = lf.getNodeModelById(nodeId) as FlowchartEditableNodeModel | undefined
@@ -245,6 +284,9 @@ function selectNode(nodeId: string) {
   if (styleForm) nodeStyleForm.value = styleForm
 }
 
+/**
+ * Handle applySelectedNodeStyle logic.
+ */
 function applySelectedNodeStyle() {
   if (!lf || !selectedNodeId.value) return
 
@@ -287,6 +329,9 @@ function applySelectedNodeStyle() {
   lf.updateText(selectedNodeId.value, normalized.text)
 }
 
+/**
+ * Handle resetSelectedNodeStyle logic.
+ */
 function resetSelectedNodeStyle() {
   if (!selectedNodeId.value) return
   const defaults = createDefaultNodeStyleForm()
@@ -302,15 +347,24 @@ function resetSelectedNodeStyle() {
   applySelectedNodeStyle()
 }
 
+/**
+ * Handle onNodeStyleInput logic.
+ */
 function onNodeStyleInput() {
   applySelectedNodeStyle()
 }
 
+/**
+ * Handle onCancel logic.
+ */
 function onCancel() {
   if (saving.value) return
   emit('cancel')
 }
 
+/**
+ * Handle toggleFullscreen logic.
+ */
 function toggleFullscreen() {
   if (saving.value) return
   isFullscreen.value = !isFullscreen.value
@@ -319,6 +373,9 @@ function toggleFullscreen() {
   })
 }
 
+/**
+ * Handle ensureExtensions logic.
+ */
 function ensureExtensions() {
   if (flowchartExtensionsInstalled) return
   LogicFlow.use(Snapshot)
@@ -335,6 +392,11 @@ function ensureExtensions() {
   flowchartExtensionsInstalled = true
 }
 
+/**
+ * Handle cloneScene logic.
+ * @param scene - Parameter.
+ * @returns Return value.
+ */
 function cloneScene(scene: FlowchartSceneSnapshot): FlowchartSceneSnapshot {
   const snapshot: FlowchartSceneSnapshot = {
     nodes: Array.isArray(scene.nodes) ? scene.nodes : [],
@@ -349,6 +411,10 @@ function cloneScene(scene: FlowchartSceneSnapshot): FlowchartSceneSnapshot {
   }
 }
 
+/**
+ * Handle createDefaultScene logic.
+ * @returns Return value.
+ */
 function createDefaultScene(): FlowchartSceneSnapshot {
   return {
     nodes: [
@@ -363,6 +429,11 @@ function createDefaultScene(): FlowchartSceneSnapshot {
   }
 }
 
+/**
+ * Handle normalizeScene logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function normalizeScene(value: unknown): FlowchartSceneSnapshot {
   if (!value || typeof value !== 'object') {
     return createDefaultScene()
@@ -383,6 +454,9 @@ function normalizeScene(value: unknown): FlowchartSceneSnapshot {
   }
 }
 
+/**
+ * Handle updateZoomPercent logic.
+ */
 function updateZoomPercent() {
   if (!lf) return
   const transform = lf.getTransform()
@@ -390,6 +464,9 @@ function updateZoomPercent() {
   zoomPercent.value = Number.isFinite(scale) ? Math.round(scale * 100) : 100
 }
 
+/**
+ * Handle refreshNodeSeed logic.
+ */
 function refreshNodeSeed() {
   if (!lf) return
 
@@ -397,10 +474,18 @@ function refreshNodeSeed() {
   nodeSeed = Array.isArray(graph.nodes) ? graph.nodes.length : 0
 }
 
+/**
+ * Handle getPaletteItem logic.
+ * @param type - Parameter.
+ * @returns Return value.
+ */
 function getPaletteItem(type: PaletteNodeType): PaletteItem | null {
   return paletteItemMap.get(type) ?? null
 }
 
+/**
+ * Handle getNextAutoPosition logic.
+ */
 function getNextAutoPosition() {
   nodeSeed += 1
   const col = (nodeSeed - 1) % 5
@@ -411,6 +496,10 @@ function getNextAutoPosition() {
   }
 }
 
+/**
+ * Handle addPaletteNode logic.
+ * @param item - Parameter.
+ */
 function addPaletteNode(item: PaletteItem, x?: number, y?: number) {
   if (!lf || saving.value) return
 
@@ -432,17 +521,31 @@ function addPaletteNode(item: PaletteItem, x?: number, y?: number) {
   lf.addNode(nodeConfig)
 }
 
+/**
+ * Handle addNodeByType logic.
+ * @param type - Parameter.
+ */
 function addNodeByType(type: PaletteNodeType) {
   const item = getPaletteItem(type)
   if (!item) return
   addPaletteNode(item)
 }
 
+/**
+ * Handle getPaletteKeyFromTransfer logic.
+ * @param dataTransfer - Parameter.
+ * @returns Return value.
+ */
 function getPaletteKeyFromTransfer(dataTransfer: DataTransfer | null): PaletteNodeType | null {
   if (!dataTransfer) return null
   return dataTransfer.getData('application/x-flowchart-node') || dataTransfer.getData('text/plain') || null
 }
 
+/**
+ * Handle hasPaletteDragPayload logic.
+ * @param dataTransfer - Parameter.
+ * @returns Return value.
+ */
 function hasPaletteDragPayload(dataTransfer: DataTransfer | null): boolean {
   if (draggingPaletteKey.value) return true
   if (!dataTransfer) return false
@@ -450,6 +553,11 @@ function hasPaletteDragPayload(dataTransfer: DataTransfer | null): boolean {
   return types.includes('application/x-flowchart-node') || types.includes('text/plain')
 }
 
+/**
+ * Handle onPaletteDragStart logic.
+ * @param event - Parameter.
+ * @param type - Parameter.
+ */
 function onPaletteDragStart(event: DragEvent, type: PaletteNodeType) {
   if (saving.value) return
 
@@ -462,10 +570,17 @@ function onPaletteDragStart(event: DragEvent, type: PaletteNodeType) {
   event.dataTransfer.setData('text/plain', type)
 }
 
+/**
+ * Handle onPaletteDragEnd logic.
+ */
 function onPaletteDragEnd() {
   draggingPaletteKey.value = null
 }
 
+/**
+ * Handle onCanvasDragOver logic.
+ * @param event - Parameter.
+ */
 function onCanvasDragOver(event: DragEvent) {
   if (saving.value) return
 
@@ -476,6 +591,10 @@ function onCanvasDragOver(event: DragEvent) {
   canvasDropActive.value = true
 }
 
+/**
+ * Handle onCanvasDragLeave logic.
+ * @param event - Parameter.
+ */
 function onCanvasDragLeave(event: DragEvent) {
   const wrapper = event.currentTarget as HTMLElement | null
   const relatedTarget = event.relatedTarget as Node | null
@@ -483,6 +602,10 @@ function onCanvasDragLeave(event: DragEvent) {
   canvasDropActive.value = false
 }
 
+/**
+ * Handle onCanvasDrop logic.
+ * @param event - Parameter.
+ */
 function onCanvasDrop(event: DragEvent) {
   event.preventDefault()
   canvasDropActive.value = false
@@ -509,6 +632,9 @@ function onCanvasDrop(event: DragEvent) {
   addPaletteNode(item)
 }
 
+/**
+ * Handle resetDefaultScene logic.
+ */
 function resetDefaultScene() {
   if (!lf || saving.value) return
   lf.render(createDefaultScene())
@@ -517,6 +643,9 @@ function resetDefaultScene() {
   refreshNodeSeed()
 }
 
+/**
+ * Handle clearScene logic.
+ */
 function clearScene() {
   if (!lf || saving.value) return
   lf.clearData()
@@ -525,24 +654,36 @@ function clearScene() {
   updateZoomPercent()
 }
 
+/**
+ * Handle zoomIn logic.
+ */
 function zoomIn() {
   if (!lf) return
   lf.zoom(true)
   updateZoomPercent()
 }
 
+/**
+ * Handle zoomOut logic.
+ */
 function zoomOut() {
   if (!lf) return
   lf.zoom(false)
   updateZoomPercent()
 }
 
+/**
+ * Handle fitToView logic.
+ */
 function fitToView() {
   if (!lf) return
   lf.fitView(24, 24)
   updateZoomPercent()
 }
 
+/**
+ * Handle applyDefaultViewport logic.
+ */
 function applyDefaultViewport() {
   if (!lf) return
   lf.resetZoom()
@@ -550,18 +691,27 @@ function applyDefaultViewport() {
   updateZoomPercent()
 }
 
+/**
+ * Handle undo logic.
+ */
 function undo() {
   if (!lf) return
   lf.undo()
   updateZoomPercent()
 }
 
+/**
+ * Handle redo logic.
+ */
 function redo() {
   if (!lf) return
   lf.redo()
   updateZoomPercent()
 }
 
+/**
+ * Handle openJsonPanel logic.
+ */
 function openJsonPanel() {
   if (!lf) return
   const raw = lf.getGraphRawData()
@@ -570,6 +720,9 @@ function openJsonPanel() {
   jsonCopied.value = false
 }
 
+/**
+ * Handle copyJson logic.
+ */
 async function copyJson() {
   if (!jsonContent.value) return
 
@@ -585,15 +738,26 @@ async function copyJson() {
   }
 }
 
+/**
+ * Handle closeJsonPanel logic.
+ */
 function closeJsonPanel() {
   jsonVisible.value = false
 }
 
+/**
+ * Handle sanitizeFileName logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function sanitizeFileName(value: string): string {
   const trimmed = value.trim() || 'flowchart'
   return trimmed.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 64)
 }
 
+/**
+ * Handle exportImage logic.
+ */
 async function exportImage() {
   if (!lf || exporting.value) return
 
@@ -630,6 +794,9 @@ async function exportImage() {
   }
 }
 
+/**
+ * Handle onConfirm logic.
+ */
 async function onConfirm() {
   if (!lf || saving.value) return
 
@@ -670,6 +837,9 @@ async function onConfirm() {
   }
 }
 
+/**
+ * Handle showMiniMap logic.
+ */
 function showMiniMap() {
   if (!lf) return
   const miniMap = (lf as unknown as { extension?: { miniMap?: { show?: () => void; updatePosition?: (pos: unknown) => void } } })

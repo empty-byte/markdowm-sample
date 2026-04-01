@@ -1,4 +1,4 @@
-﻿export type FlowchartSourceKind = 'image' | 'token'
+export type FlowchartSourceKind = 'image' | 'token'
 
 export interface FlowchartRecord {
   id: string
@@ -26,11 +26,22 @@ export const FLOWCHART_EDIT_REQUEST_EVENT = 'milkdown:flowchart-edit-request'
 
 let flowchartCache: Record<string, FlowchartRecord> | null = null
 
+/**
+ * Handle canUseStorage logic.
+ * @returns Return value.
+ */
 function canUseStorage(): boolean {
+  // Keep SSR-safe by checking browser globals before touching localStorage.
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 }
 
+/**
+ * Handle encodeTime logic.
+ * @param now - Parameter.
+ * @returns Return value.
+ */
 function encodeTime(now: number): string {
+  // ULID-style timestamp component (base32, fixed length).
   let value = now
   let output = ''
   for (let i = 0; i < 10; i += 1) {
@@ -40,7 +51,13 @@ function encodeTime(now: number): string {
   return output
 }
 
+/**
+ * Handle encodeRandom logic.
+ * @param length - Parameter.
+ * @returns Return value.
+ */
 function encodeRandom(length: number): string {
+  // ULID-style random component for collision reduction.
   let output = ''
   for (let i = 0; i < length; i += 1) {
     output += ULID_CHARS[Math.floor(Math.random() * 32)]
@@ -48,7 +65,11 @@ function encodeRandom(length: number): string {
   return output
 }
 
+/**
+ * Handle ensureFlowchartLoaded logic.
+ */
 function ensureFlowchartLoaded(): void {
+  // Lazy-load local cache once; all read/write operations go through this guard.
   if (flowchartCache) return
 
   flowchartCache = {}
@@ -81,7 +102,11 @@ function ensureFlowchartLoaded(): void {
   }
 }
 
+/**
+ * Handle persistFlowcharts logic.
+ */
 function persistFlowcharts(): void {
+  // Persist in one place so error handling stays centralized.
   if (!canUseStorage() || !flowchartCache) return
 
   try {
@@ -92,6 +117,7 @@ function persistFlowcharts(): void {
 }
 
 export function createFlowchartId(now = Date.now()): string {
+  // Prefix keeps different attachment types easy to distinguish in Markdown.
   return `fc_${encodeTime(now)}${encodeRandom(16)}`
 }
 
@@ -107,6 +133,7 @@ export function createFlowchartSource(id: string): string {
 }
 
 export function createFlowchartToken(title: string, id: string): string {
+  // Canonical token format used by NodeView parser and editor replace logic.
   const normalizedTitle = title.trim() || '流程图'
   return `![flowchart:${normalizedTitle}](${createFlowchartSource(id)})`
 }
@@ -119,6 +146,7 @@ export function getFlowchartById(id: string): FlowchartRecord | null {
 export function upsertFlowchart(input: { id: string; title: string; previewUrl: string; scene?: unknown }): FlowchartRecord {
   ensureFlowchartLoaded()
 
+  // Always overwrite by id to keep "insert" and "edit" on same code path.
   const record: FlowchartRecord = {
     id: input.id,
     title: input.title.trim() || '流程图',
@@ -142,5 +170,6 @@ export function removeFlowchart(id: string): void {
 }
 
 export function emitFlowchartEditRequest(detail: FlowchartEditRequestDetail): void {
+  // Decouples node click handling from Vue dialog component tree.
   window.dispatchEvent(new CustomEvent<FlowchartEditRequestDetail>(FLOWCHART_EDIT_REQUEST_EVENT, { detail }))
 }

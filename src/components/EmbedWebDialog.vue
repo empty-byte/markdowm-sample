@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { isValidEmbedUrl } from '../features/editor-enhance/embeds'
 
@@ -38,17 +38,25 @@ const confirmText = computed(() => (props.mode === 'edit' ? '保存' : '插入')
 watch(
   () => [props.mode, props.initialUrl, props.initialTitle],
   () => {
+    // Reset form whenever dialog mode/target changes.
     urlInput.value = props.initialUrl || ''
     titleInput.value = props.initialTitle || ''
   },
   { immediate: true }
 )
 
+/**
+ * Handle onCancel logic.
+ */
 function onCancel() {
   emit('cancel')
 }
 
+/**
+ * Handle onConfirm logic.
+ */
 function onConfirm() {
+  // Guard invalid URL and normalize payload before sending to parent editor logic.
   if (!urlValid.value) return
 
   emit('confirm', {

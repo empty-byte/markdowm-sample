@@ -1,4 +1,4 @@
-﻿import { Plugin, PluginKey } from '@milkdown/prose/state'
+import { Plugin, PluginKey } from '@milkdown/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/prose/view'
 
 export interface CommentHighlightRange {
@@ -16,6 +16,7 @@ export interface CommentAnchorHighlightOptions {
 export const commentAnchorHighlightPluginKey = new PluginKey('commentAnchorHighlight')
 
 export function createCommentAnchorHighlightPlugin(options: CommentAnchorHighlightOptions) {
+  // Render two decoration layers: all comment anchors + currently active anchor.
   return new Plugin({
     key: commentAnchorHighlightPluginKey,
     props: {
@@ -47,6 +48,7 @@ export function createCommentAnchorHighlightPlugin(options: CommentAnchorHighlig
         return DecorationSet.create(state.doc, decorations)
       },
       handleClick: (_view, pos) => {
+        // Translate click position back to comment ID, then delegate to sidebar behavior.
         const key = options.getRangeKeyAt(pos)
         if (!key) return false
 

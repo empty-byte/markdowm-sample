@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import MindMap from 'simple-mind-map/full.js'
 import 'simple-mind-map/dist/simpleMindMap.esm.css'
@@ -148,6 +148,10 @@ watch(
   }
 )
 
+/**
+ * Handle createDefaultNodeStyleForm logic.
+ * @returns Return value.
+ */
 function createDefaultNodeStyleForm(): MindmapNodeStyleForm {
   return {
     text: '',
@@ -158,6 +162,12 @@ function createDefaultNodeStyleForm(): MindmapNodeStyleForm {
   }
 }
 
+/**
+ * Handle createPlainNodeData logic.
+ * @param text - Parameter.
+ * @param extra - Parameter.
+ * @returns Return value.
+ */
 function createPlainNodeData(text: string, extra: Partial<MindmapRootNode['data']> = {}): MindmapRootNode['data'] {
   return {
     text,
@@ -168,6 +178,10 @@ function createPlainNodeData(text: string, extra: Partial<MindmapRootNode['data'
   }
 }
 
+/**
+ * Handle createDefaultRoot logic.
+ * @returns Return value.
+ */
 function createDefaultRoot(): MindmapRootNode {
   return {
     data: createPlainNodeData('中心主题'),
@@ -190,12 +204,27 @@ function cloneScene<T>(value: T): T {
   }
 }
 
+/**
+ * Handle toClampedNumber logic.
+ * @param value - Parameter.
+ * @param fallback - Parameter.
+ * @param min - Parameter.
+ * @param max - Parameter.
+ * @returns Return value.
+ */
 function toClampedNumber(value: unknown, fallback: number, min: number, max: number): number {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return fallback
   return Math.min(max, Math.max(min, numeric))
 }
 
+/**
+ * Handle rgbToHex logic.
+ * @param r - Parameter.
+ * @param g - Parameter.
+ * @param b - Parameter.
+ * @returns Return value.
+ */
 function rgbToHex(r: number, g: number, b: number): string {
   const toHex = (channel: number) => {
     const clamped = Math.max(0, Math.min(255, Math.round(channel)))
@@ -204,6 +233,12 @@ function rgbToHex(r: number, g: number, b: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
+/**
+ * Handle normalizeColor logic.
+ * @param value - Parameter.
+ * @param fallback - Parameter.
+ * @returns Return value.
+ */
 function normalizeColor(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback
 
@@ -237,6 +272,11 @@ function normalizeColor(value: unknown, fallback: string): string {
   return rgbToHex(r, g, b)
 }
 
+/**
+ * Handle toPlainNodeText logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function toPlainNodeText(value: unknown): string {
   if (typeof value === 'string') {
     const raw = value.trim()
@@ -262,6 +302,11 @@ function toPlainNodeText(value: unknown): string {
   return ''
 }
 
+/**
+ * Handle sanitizeRootNode logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function sanitizeRootNode(value: unknown): MindmapRootNode {
   const sanitizeNode = (nodeValue: unknown, fallbackText: string): MindmapRootNode => {
     if (!nodeValue || typeof nodeValue !== 'object') {
@@ -304,6 +349,11 @@ function sanitizeRootNode(value: unknown): MindmapRootNode {
   return sanitizeNode(value, '中心主题')
 }
 
+/**
+ * Handle normalizeScene logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function normalizeScene(value: unknown): MindmapFullScene {
   const fallback: MindmapFullScene = {
     layout: DEFAULT_MINDMAP_LAYOUT,
@@ -333,16 +383,29 @@ function normalizeScene(value: unknown): MindmapFullScene {
   return fallback
 }
 
+/**
+ * Handle getRootNode logic.
+ * @returns Return value.
+ */
 function getRootNode(): MindmapNodeInstance | null {
   const root = (mindMap as unknown as { renderer?: { root?: MindmapNodeInstance } })?.renderer?.root
   return root ?? null
 }
 
+/**
+ * Handle getActiveNodes logic.
+ * @returns Return value.
+ */
 function getActiveNodes(): MindmapNodeInstance[] {
   const list = (mindMap as unknown as { renderer?: { activeNodeList?: MindmapNodeInstance[] } })?.renderer?.activeNodeList
   return Array.isArray(list) ? list : []
 }
 
+/**
+ * Handle findNodeByUid logic.
+ * @param uid - Parameter.
+ * @returns Return value.
+ */
 function findNodeByUid(uid: string): MindmapNodeInstance | null {
   if (!uid) return null
   const renderer = (mindMap as unknown as { renderer?: { findNodeByUid?: (id: string) => MindmapNodeInstance | null } })?.renderer
@@ -350,12 +413,22 @@ function findNodeByUid(uid: string): MindmapNodeInstance | null {
   return renderer.findNodeByUid(uid) ?? null
 }
 
+/**
+ * Handle isMindmapNode logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function isMindmapNode(value: unknown): value is MindmapNodeInstance {
   if (!value || typeof value !== 'object') return false
   const candidate = value as MindmapNodeInstance
   return typeof candidate.getData === 'function' && typeof candidate.getStyle === 'function'
 }
 
+/**
+ * Handle readNodeStyle logic.
+ * @param node - Parameter.
+ * @returns Return value.
+ */
 function readNodeStyle(node: MindmapNodeInstance): MindmapNodeStyleForm {
   const fallback = createDefaultNodeStyleForm()
   const text = toPlainNodeText(node.getData('text'))
@@ -373,6 +446,10 @@ function readNodeStyle(node: MindmapNodeInstance): MindmapNodeStyleForm {
   }
 }
 
+/**
+ * Handle setSelection logic.
+ * @param node - Parameter.
+ */
 function setSelection(node: MindmapNodeInstance | null) {
   selectedNode = node
   if (!node) {
@@ -387,6 +464,10 @@ function setSelection(node: MindmapNodeInstance | null) {
   nodeStyleForm.value = readNodeStyle(node)
 }
 
+/**
+ * Handle getPrimaryTargetNode logic.
+ * @returns Return value.
+ */
 function getPrimaryTargetNode(): MindmapNodeInstance | null {
   if (selectedNode) return selectedNode
   const active = getActiveNodes()
@@ -394,16 +475,27 @@ function getPrimaryTargetNode(): MindmapNodeInstance | null {
   return getRootNode()
 }
 
+/**
+ * Handle hideContextMenu logic.
+ */
 function hideContextMenu() {
   contextMenuVisible.value = false
 }
 
+/**
+ * Handle isMouseEventLike logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function isMouseEventLike(value: unknown): value is MouseEvent {
   if (!value || typeof value !== 'object') return false
   const candidate = value as MouseEvent
   return typeof candidate.clientX === 'number' && typeof candidate.clientY === 'number'
 }
 
+/**
+ * Handle clampContextMenuWithinCanvas logic.
+ */
 function clampContextMenuWithinCanvas() {
   const wrap = canvasWrapRef.value
   const menu = contextMenuRef.value
@@ -416,6 +508,11 @@ function clampContextMenuWithinCanvas() {
   contextMenuY.value = Math.min(maxY, Math.max(minPadding, contextMenuY.value))
 }
 
+/**
+ * Handle openContextMenu logic.
+ * @param event - Parameter.
+ * @param node - Parameter.
+ */
 function openContextMenu(event: MouseEvent, node: MindmapNodeInstance | null) {
   if (saving.value) return
   event.preventDefault()
@@ -448,6 +545,10 @@ function openContextMenu(event: MouseEvent, node: MindmapNodeInstance | null) {
   })
 }
 
+/**
+ * Handle getFullScene logic.
+ * @returns Return value.
+ */
 function getFullScene(): MindmapFullScene {
   if (!mindMap) {
     return {
@@ -473,6 +574,10 @@ function getFullScene(): MindmapFullScene {
   }
 }
 
+/**
+ * Handle disableRichTextPlugin logic.
+ * @param instance - Parameter.
+ */
 function disableRichTextPlugin(instance: MindMap) {
   const richTextInstance = (instance as unknown as { richText?: { constructor?: unknown } }).richText
   const removePlugin = (instance as unknown as { removePlugin?: (plugin: unknown) => void }).removePlugin
@@ -481,20 +586,32 @@ function disableRichTextPlugin(instance: MindMap) {
   removePlugin.call(instance, richTextInstance.constructor)
 }
 
+/**
+ * Handle updateZoomPercent logic.
+ */
 function updateZoomPercent() {
   const scale = Number(mindMap?.view?.scale)
   zoomPercent.value = Number.isFinite(scale) ? Math.round(scale * 100) : 100
 }
 
+/**
+ * Handle refreshJson logic.
+ */
 function refreshJson() {
   jsonContent.value = JSON.stringify(getFullScene(), null, 2)
 }
 
+/**
+ * Handle onCancel logic.
+ */
 function onCancel() {
   if (saving.value) return
   emit('cancel')
 }
 
+/**
+ * Handle toggleFullscreen logic.
+ */
 function toggleFullscreen() {
   if (saving.value) return
   isFullscreen.value = !isFullscreen.value
@@ -503,35 +620,59 @@ function toggleFullscreen() {
   })
 }
 
+/**
+ * Handle zoomIn logic.
+ */
 function zoomIn() {
   if (!mindMap || saving.value) return
   mindMap.view.enlarge(undefined, undefined, false)
   updateZoomPercent()
 }
 
+/**
+ * Handle zoomOut logic.
+ */
 function zoomOut() {
   if (!mindMap || saving.value) return
   mindMap.view.narrow(undefined, undefined, false)
   updateZoomPercent()
 }
 
+/**
+ * Handle fitToView logic.
+ */
 function fitToView() {
   if (!mindMap || saving.value) return
   mindMap.view.fit(() => {}, false, undefined)
   updateZoomPercent()
 }
 
+/**
+ * Handle normalizeExportDataUrl logic.
+ * @param value - Parameter.
+ * @returns Return value.
+ */
 function normalizeExportDataUrl(value: unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim()
 }
 
+/**
+ * Handle buildSvgDataUrl logic.
+ * @param svgText - Parameter.
+ * @returns Return value.
+ */
 function buildSvgDataUrl(svgText: string): string {
   const normalized = svgText.trim()
   if (!normalized) return ''
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(normalized)}`
 }
 
+/**
+ * Handle getMindmapSvgSnapshot logic.
+ * @param padding - Parameter.
+ * @returns Return value.
+ */
 function getMindmapSvgSnapshot(padding = 24): string {
   if (!mindMap) return ''
 
@@ -567,6 +708,10 @@ function getMindmapSvgSnapshot(padding = 24): string {
   return ''
 }
 
+/**
+ * Handle captureLiveSvgPreviewDataUrl logic.
+ * @returns Return value.
+ */
 function captureLiveSvgPreviewDataUrl(): string {
   const host = hostRef.value
   if (!host) return ''
@@ -617,6 +762,10 @@ function captureLiveSvgPreviewDataUrl(): string {
   }
 }
 
+/**
+ * Handle waitForMindmapRenderReady logic.
+ * @returns Return value.
+ */
 async function waitForMindmapRenderReady(): Promise<void> {
   if (!mindMap) return
 
@@ -646,6 +795,12 @@ async function waitForMindmapRenderReady(): Promise<void> {
   })
 }
 
+/**
+ * Handle trimImageByContent logic.
+ * @param dataUrl - Parameter.
+ * @param padding - Parameter.
+ * @returns Return value.
+ */
 async function trimImageByContent(dataUrl: string, padding = 20): Promise<string> {
   if (!dataUrl) return ''
 
@@ -738,6 +893,12 @@ async function trimImageByContent(dataUrl: string, padding = 20): Promise<string
   return outputCanvas.toDataURL('image/png')
 }
 
+/**
+ * Handle ensurePreviewHasContent logic.
+ * @param dataUrl - Parameter.
+ * @param padding - Parameter.
+ * @returns Return value.
+ */
 async function ensurePreviewHasContent(dataUrl: string, padding = 24): Promise<string> {
   const normalized = normalizeExportDataUrl(dataUrl)
   if (!normalized) return ''
@@ -752,6 +913,11 @@ async function ensurePreviewHasContent(dataUrl: string, padding = 24): Promise<s
   return ''
 }
 
+/**
+ * Handle exportSvgDataUrl logic.
+ * @param fileName - Parameter.
+ * @returns Return value.
+ */
 async function exportSvgDataUrl(fileName: string): Promise<string> {
   if (!mindMap) return ''
   const safeName = fileName.trim() || '思维导图'
@@ -763,6 +929,12 @@ async function exportSvgDataUrl(fileName: string): Promise<string> {
   }
 }
 
+/**
+ * Handle exportPngDataUrl logic.
+ * @param fileName - Parameter.
+ * @param transparent - Parameter.
+ * @returns Return value.
+ */
 async function exportPngDataUrl(fileName: string, transparent = false): Promise<string> {
   if (!mindMap) return ''
   const safeName = fileName.trim() || '思维导图'
@@ -774,6 +946,11 @@ async function exportPngDataUrl(fileName: string, transparent = false): Promise<
   }
 }
 
+/**
+ * Handle exportPreviewDataUrl logic.
+ * @param fileName - Parameter.
+ * @returns Return value.
+ */
 async function exportPreviewDataUrl(fileName: string): Promise<string> {
   if (!mindMap) return ''
   const safeName = fileName.trim() || '思维导图'
@@ -812,16 +989,25 @@ async function exportPreviewDataUrl(fileName: string): Promise<string> {
   return ''
 }
 
+/**
+ * Handle undo logic.
+ */
 function undo() {
   if (!mindMap || saving.value) return
   mindMap.execCommand('BACK')
 }
 
+/**
+ * Handle redo logic.
+ */
 function redo() {
   if (!mindMap || saving.value) return
   mindMap.execCommand('FORWARD')
 }
 
+/**
+ * Handle setDefaultScene logic.
+ */
 function setDefaultScene() {
   if (!mindMap || saving.value) return
   mindMap.setData(createDefaultRoot())
@@ -830,6 +1016,9 @@ function setDefaultScene() {
   fitToView()
 }
 
+/**
+ * Handle clearScene logic.
+ */
 function clearScene() {
   if (!mindMap || saving.value) return
   mindMap.setData({
@@ -841,12 +1030,22 @@ function clearScene() {
   fitToView()
 }
 
+/**
+ * Handle createInsertNodeData logic.
+ * @param text - Parameter.
+ * @param extras - Parameter.
+ */
 function createInsertNodeData(text: string, extras: Partial<MindmapRootNode['data']> = {}) {
   return createPlainNodeData(text, {
     ...extras,
   })
 }
 
+/**
+ * Handle insertTemplateNode logic.
+ * @param item - Parameter.
+ * @param mode - Parameter.
+ */
 function insertTemplateNode(item: MindmapTemplateItem, mode: 'child' | 'sibling' = 'child') {
   if (!mindMap || saving.value) return
 
@@ -868,14 +1067,23 @@ function insertTemplateNode(item: MindmapTemplateItem, mode: 'child' | 'sibling'
   error.value = ''
 }
 
+/**
+ * Handle addChildNodeQuick logic.
+ */
 function addChildNodeQuick() {
   insertTemplateNode({ key: 'quick-child', label: '子节点', text: '子主题', hint: 'topic' }, 'child')
 }
 
+/**
+ * Handle addSiblingNodeQuick logic.
+ */
 function addSiblingNodeQuick() {
   insertTemplateNode({ key: 'quick-sibling', label: '同级节点', text: '同级主题', hint: 'topic' }, 'sibling')
 }
 
+/**
+ * Handle removeSelectedNode logic.
+ */
 function removeSelectedNode() {
   if (!mindMap || saving.value || !selectedNode) return
 
@@ -893,6 +1101,10 @@ function removeSelectedNode() {
   })
 }
 
+/**
+ * Handle runContextMenuAction logic.
+ * @param action - Parameter.
+ */
 function runContextMenuAction(action: 'child' | 'sibling' | 'delete') {
   if (saving.value) return
 
@@ -915,15 +1127,30 @@ function runContextMenuAction(action: 'child' | 'sibling' | 'delete') {
   hideContextMenu()
 }
 
+/**
+ * Handle getTemplateByKey logic.
+ * @param key - Parameter.
+ * @returns Return value.
+ */
 function getTemplateByKey(key: string): MindmapTemplateItem | null {
   return templateItemMap.get(key) ?? null
 }
 
+/**
+ * Handle getTemplateKeyFromTransfer logic.
+ * @param dataTransfer - Parameter.
+ * @returns Return value.
+ */
 function getTemplateKeyFromTransfer(dataTransfer: DataTransfer | null): string | null {
   if (!dataTransfer) return null
   return dataTransfer.getData('application/x-mindmap-template') || dataTransfer.getData('text/plain') || null
 }
 
+/**
+ * Handle hasTemplateDragPayload logic.
+ * @param dataTransfer - Parameter.
+ * @returns Return value.
+ */
 function hasTemplateDragPayload(dataTransfer: DataTransfer | null): boolean {
   if (draggingTemplateKey.value) return true
   if (!dataTransfer) return false
@@ -931,6 +1158,11 @@ function hasTemplateDragPayload(dataTransfer: DataTransfer | null): boolean {
   return types.includes('application/x-mindmap-template') || types.includes('text/plain')
 }
 
+/**
+ * Handle onTemplateDragStart logic.
+ * @param event - Parameter.
+ * @param key - Parameter.
+ */
 function onTemplateDragStart(event: DragEvent, key: string) {
   if (!event.dataTransfer || saving.value) return
   draggingTemplateKey.value = key
@@ -939,10 +1171,17 @@ function onTemplateDragStart(event: DragEvent, key: string) {
   event.dataTransfer.setData('text/plain', key)
 }
 
+/**
+ * Handle onTemplateDragEnd logic.
+ */
 function onTemplateDragEnd() {
   draggingTemplateKey.value = null
 }
 
+/**
+ * Handle onCanvasDragOver logic.
+ * @param event - Parameter.
+ */
 function onCanvasDragOver(event: DragEvent) {
   if (saving.value) return
   if (!hasTemplateDragPayload(event.dataTransfer)) return
@@ -952,6 +1191,10 @@ function onCanvasDragOver(event: DragEvent) {
   canvasDropActive.value = true
 }
 
+/**
+ * Handle onCanvasDragLeave logic.
+ * @param event - Parameter.
+ */
 function onCanvasDragLeave(event: DragEvent) {
   const wrapper = event.currentTarget as HTMLElement | null
   const relatedTarget = event.relatedTarget as Node | null
@@ -959,6 +1202,10 @@ function onCanvasDragLeave(event: DragEvent) {
   canvasDropActive.value = false
 }
 
+/**
+ * Handle onCanvasDrop logic.
+ * @param event - Parameter.
+ */
 function onCanvasDrop(event: DragEvent) {
   event.preventDefault()
   canvasDropActive.value = false
@@ -974,6 +1221,9 @@ function onCanvasDrop(event: DragEvent) {
   insertTemplateNode(item, 'child')
 }
 
+/**
+ * Handle onNodeStyleInput logic.
+ */
 function onNodeStyleInput() {
   if (!mindMap || saving.value || !selectedNode) return
 
@@ -996,6 +1246,9 @@ function onNodeStyleInput() {
   })
 }
 
+/**
+ * Handle resetSelectedNodeStyle logic.
+ */
 function resetSelectedNodeStyle() {
   if (!selectedNode || saving.value) return
 
@@ -1011,6 +1264,9 @@ function resetSelectedNodeStyle() {
   onNodeStyleInput()
 }
 
+/**
+ * Handle exportImage logic.
+ */
 async function exportImage() {
   if (!mindMap || exporting.value || saving.value) return
   exporting.value = true
@@ -1037,6 +1293,9 @@ async function exportImage() {
   }
 }
 
+/**
+ * Handle openJsonPanel logic.
+ */
 function openJsonPanel() {
   if (saving.value) return
   jsonVisible.value = true
@@ -1044,11 +1303,17 @@ function openJsonPanel() {
   refreshJson()
 }
 
+/**
+ * Handle closeJsonPanel logic.
+ */
 function closeJsonPanel() {
   jsonVisible.value = false
   jsonCopied.value = false
 }
 
+/**
+ * Handle copyJson logic.
+ */
 function copyJson() {
   if (!jsonContent.value) return
 
@@ -1064,6 +1329,9 @@ function copyJson() {
   }
 }
 
+/**
+ * Handle onConfirm logic.
+ */
 async function onConfirm() {
   if (!mindMap || saving.value) return
 

@@ -1,4 +1,4 @@
-﻿export interface EmbedBlock {
+export interface EmbedBlock {
   id: string
   sourceUrl: string
   provider: EmbedProvider
@@ -67,7 +67,13 @@ export function toEmbedUrl(sourceUrl: string, provider: EmbedProvider): string {
   return sourceUrl
 }
 
+/**
+ * Handle toYouTubeEmbedUrl logic.
+ * @param url - Parameter.
+ * @returns Return value.
+ */
 function toYouTubeEmbedUrl(url: string): string | null {
+  // Support both youtu.be short links and youtube.com/watch?v=...
   try {
     const parsed = new URL(url)
     let videoId: string | null = null
@@ -85,13 +91,25 @@ function toYouTubeEmbedUrl(url: string): string | null {
   }
 }
 
+/**
+ * Handle toBilibiliEmbedUrl logic.
+ * @param url - Parameter.
+ * @returns Return value.
+ */
 function toBilibiliEmbedUrl(url: string): string | null {
+  // Convert BV video URL to player endpoint used in iframe embeds.
   const match = /bilibili\.com\/video\/(BV[\w]+)/i.exec(url)
   if (!match) return null
   return `https://player.bilibili.com/player.html?bvid=${match[1]}&autoplay=0`
 }
 
+/**
+ * Handle toFigmaEmbedUrl logic.
+ * @param url - Parameter.
+ * @returns Return value.
+ */
 function toFigmaEmbedUrl(url: string): string {
+  // Figma embed URL expects original URL encoded as query parameter.
   return `https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(url)}`
 }
 
@@ -157,5 +175,6 @@ export interface EmbedEditRequestDetail {
 export const EMBED_EDIT_REQUEST_EVENT = 'milkdown:embed-edit-request'
 
 export function emitEmbedEditRequest(detail: EmbedEditRequestDetail): void {
+  // NodeView triggers this event; dialog host listens and opens edit modal.
   window.dispatchEvent(new CustomEvent<EmbedEditRequestDetail>(EMBED_EDIT_REQUEST_EVENT, { detail }))
 }

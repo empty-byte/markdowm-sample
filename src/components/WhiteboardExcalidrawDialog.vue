@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import React from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -57,24 +57,41 @@ watch(
   }
 )
 
+/**
+ * Handle onCancel logic.
+ */
 function onCancel() {
+  // Avoid closing during save to prevent partial state.
   if (saving.value) return
   emit('cancel')
 }
 
+/**
+ * Handle toggleFullscreen logic.
+ */
 function toggleFullscreen() {
   if (saving.value) return
   isFullscreen.value = !isFullscreen.value
 }
 
+/**
+ * Handle disposeRoot logic.
+ */
 function disposeRoot() {
+  // React root must be unmounted to avoid memory leaks when dialog closes.
   if (!reactRoot) return
   reactRoot.unmount()
   reactRoot = null
   excalidrawApi = null
 }
 
+/**
+ * Handle toDataUrl logic.
+ * @param blob - Parameter.
+ * @returns Return value.
+ */
 function toDataUrl(blob: Blob): Promise<string> {
+  // Convert exported PNG blob to DataURL for Markdown preview persistence.
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -92,7 +109,13 @@ function toDataUrl(blob: Blob): Promise<string> {
   })
 }
 
+/**
+ * Handle toSnapshot logic.
+ * @param api - Parameter.
+ * @returns Return value.
+ */
 function toSnapshot(api: ExcalidrawImperativeAPI): WhiteboardSceneSnapshot {
+  // Persist only the app state fields we actually reuse on next open.
   const appState = api.getAppState()
 
   return {
@@ -122,9 +145,13 @@ function toSnapshot(api: ExcalidrawImperativeAPI): WhiteboardSceneSnapshot {
   }
 }
 
+/**
+ * Handle onConfirm logic.
+ */
 async function onConfirm() {
   if (!excalidrawApi || saving.value) return
 
+  // Export scene as PNG preview + raw scene snapshot, then emit to parent.
   saving.value = true
   error.value = ''
 

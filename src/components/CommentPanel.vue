@@ -37,11 +37,22 @@ const canSubmitComment = computed(() => Boolean(props.hasSelectedRange && props.
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const commentItemRefs = new Map<string, HTMLElement>()
 
+/**
+ * Handle setInputRef logic.
+ * @param element - Parameter.
+ */
 function setInputRef(element: unknown) {
+  // Keep a stable textarea ref so parent can focus input after text selection.
   inputRef.value = element instanceof HTMLTextAreaElement ? element : null
 }
 
+/**
+ * Handle setCommentItemRef logic.
+ * @param id - Parameter.
+ * @param element - Parameter.
+ */
 function setCommentItemRef(id: string, element: unknown) {
+  // Track rendered comment cards for smooth scroll-to-item interactions.
   if (element instanceof HTMLElement) {
     commentItemRefs.set(id, element)
     return
@@ -49,16 +60,30 @@ function setCommentItemRef(id: string, element: unknown) {
   commentItemRefs.delete(id)
 }
 
+/**
+ * Handle scrollCommentIntoView logic.
+ * @param id - Parameter.
+ */
 function scrollCommentIntoView(id: string) {
+  // Called by parent when anchor click in editor needs sidebar synchronization.
   commentItemRefs.get(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
+/**
+ * Handle focusInput logic.
+ */
 function focusInput() {
+  // Called by parent when user starts "add comment from selection".
   inputRef.value?.focus()
   inputRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
+/**
+ * Handle formatTime logic.
+ * @param time - Parameter.
+ */
 function formatTime(time: number) {
+  // Unified short timestamp format used in comment cards.
   return new Date(time).toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',

@@ -1,4 +1,4 @@
-﻿import { Plugin, PluginKey } from '@milkdown/prose/state'
+import { Plugin, PluginKey } from '@milkdown/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/prose/view'
 import type { EditorView } from '@milkdown/prose/view'
 import type { Node as ProsemirrorNode } from '@milkdown/prose/model'
@@ -24,7 +24,13 @@ interface MindmapWidget {
 
 const mindmapTokenPattern = /!\[mindmap:([^\]]*)\]\((mindmap:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
 
+/**
+ * Handle collectMindmapWidgets logic.
+ * @param doc - Parameter.
+ * @returns Return value.
+ */
 function collectMindmapWidgets(doc: ProsemirrorNode): MindmapWidget[] {
+  // Scan both rendered image nodes and raw token text so migration states both work.
   const results: MindmapWidget[] = []
 
   doc.descendants((node, pos, parent) => {
@@ -81,17 +87,34 @@ function collectMindmapWidgets(doc: ProsemirrorNode): MindmapWidget[] {
   return results
 }
 
+/**
+ * Handle stopMouseDown logic.
+ * @param event - Parameter.
+ */
 function stopMouseDown(event: MouseEvent): void {
+  // Keep editor selection stable when interacting with widget controls.
   event.preventDefault()
   event.stopPropagation()
 }
 
+/**
+ * Handle stopAction logic.
+ * @param event - Parameter.
+ */
 function stopAction(event: MouseEvent): void {
+  // Action buttons should not bubble into ProseMirror click handlers.
   event.preventDefault()
   event.stopPropagation()
 }
 
+/**
+ * Handle createMindmapWidget logic.
+ * @param widget - Parameter.
+ * @param view - Parameter.
+ * @returns Return value.
+ */
 function createMindmapWidget(widget: MindmapWidget, view: EditorView): HTMLElement {
+  // Build non-editable card UI shown inline in the document.
   const wrapper = document.createElement('div')
   wrapper.className = 'embed-inline-card mindmap-inline-card'
   wrapper.contentEditable = 'false'
@@ -175,6 +198,7 @@ function createMindmapWidget(widget: MindmapWidget, view: EditorView): HTMLEleme
 }
 
 export default function createMindmapNodeViewPlugin() {
+  // Render mindmap widgets via decorations while hiding original token/image content.
   return new Plugin({
     key: mindmapNodeViewPluginKey,
     props: {
