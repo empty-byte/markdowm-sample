@@ -133,6 +133,22 @@ a {
   color: var(--muted);
 }
 
+.btn.primary {
+  border-color: color-mix(in srgb, var(--accent, #1f7afc) 82%, #0e52b4);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #1f7afc) 90%, #78acff), var(--accent, #1f7afc));
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(31, 122, 252, 0.24);
+}
+
+.btn.primary:hover {
+  border-color: color-mix(in srgb, var(--accent, #1f7afc) 90%, #0d4699);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #1f7afc) 84%, #5f9aff), color-mix(in srgb, var(--accent, #1f7afc) 92%, #0d56bf));
+  color: #fff;
+}
+
+.btn.primary:disabled {
+  box-shadow: none;
+}
 .status {
   font-size: 13px;
   border-radius: 999px;
@@ -1337,4 +1353,5 @@ code {
 .flowchart-token-hidden {
   display: none;
 }
+
 

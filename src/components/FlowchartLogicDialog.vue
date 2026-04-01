@@ -986,8 +986,8 @@ onBeforeUnmount(() => {
       <p v-if="error" class="flowchart-editor-error">{{ error }}</p>
 
       <div class="flowchart-editor-actions">
-        <button type="button" class="btn" :disabled="saving" @click="onConfirm">{{ confirmText }}</button>
         <button type="button" class="btn ghost" :disabled="saving" @click="onCancel">取消</button>
+        <button type="button" class="btn primary" :disabled="saving" @click="onConfirm">{{ confirmText }}</button>
       </div>
     </div>
 
@@ -1506,3 +1506,4 @@ onBeforeUnmount(() => {
   color: #d3e6ff;
 }
 </style>
+

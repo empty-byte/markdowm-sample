@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import React from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -206,8 +206,8 @@ onBeforeUnmount(() => {
       <p v-if="error" class="whiteboard-editor-error">{{ error }}</p>
 
       <div class="whiteboard-editor-actions">
-        <button type="button" class="btn" :disabled="saving" @click="onConfirm">{{ confirmText }}</button>
         <button type="button" class="btn ghost" :disabled="saving" @click="onCancel">取消</button>
+        <button type="button" class="btn primary" :disabled="saving" @click="onConfirm">{{ confirmText }}</button>
       </div>
     </div>
   </div>
@@ -297,3 +297,4 @@ onBeforeUnmount(() => {
   background: #fff;
 }
 </style>
+

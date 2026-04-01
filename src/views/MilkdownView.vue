@@ -49,6 +49,7 @@ import createWhiteboardNodeViewPlugin from '../features/editor-enhance/whiteboar
 import createFlowchartNodeViewPlugin from '../features/editor-enhance/flowchart-node-view'
 import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
 import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
+import EmbedWebDialog from '../components/EmbedWebDialog.vue'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -258,8 +259,6 @@ const commentItemRefs = new Map<string, HTMLElement>()
 const embedDialogVisible = ref(false)
 const embedDialogMode = ref<'insert' | 'edit'>('insert')
 const embedEditTarget = ref<EmbedEditRequestDetail | null>(null)
-const embedUrlInput = ref('')
-const embedTitleInput = ref('')
 const whiteboardEditorVisible = ref(false)
 const whiteboardEditorMode = ref<'insert' | 'edit'>('insert')
 const whiteboardEditTarget = ref<WhiteboardEditRequestDetail | null>(null)
@@ -514,12 +513,6 @@ const collaboratorCountLabel = computed(() => {
 
 const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
 
-const embedUrlValid = computed(() => {
-  const url = embedUrlInput.value.trim()
-  return url.length > 0 && isValidEmbedUrl(url)
-})
-const embedDialogTitle = computed(() => (embedDialogMode.value === 'edit' ? '编辑内嵌网页' : '插入内嵌网页'))
-const embedDialogConfirmText = computed(() => (embedDialogMode.value === 'edit' ? '保存' : '插入'))
 
 function getFeatureFlags() {
   return crepeFeatureItems.reduce((acc, item) => {
@@ -1126,24 +1119,18 @@ function openEmbedDialog() {
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
   embedDialogVisible.value = true
-  embedUrlInput.value = ''
-  embedTitleInput.value = ''
 }
 
 function openEmbedEditDialog(detail: EmbedEditRequestDetail) {
   embedDialogMode.value = 'edit'
   embedEditTarget.value = detail
   embedDialogVisible.value = true
-  embedUrlInput.value = detail.sourceUrl
-  embedTitleInput.value = detail.title
 }
 
 function closeEmbedDialog() {
   embedDialogVisible.value = false
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
-  embedUrlInput.value = ''
-  embedTitleInput.value = ''
 }
 
 function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: string) {
@@ -1176,11 +1163,11 @@ function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: stri
   })
 }
 
-function confirmEmbed() {
-  const url = embedUrlInput.value.trim()
+function confirmEmbed(payload: { url: string; title: string }) {
+  const url = payload.url.trim()
   if (!isValidEmbedUrl(url)) return
 
-  const title = embedTitleInput.value.trim() || '内嵌网页'
+  const title = payload.title.trim() || '内嵌网页'
   const target = embedEditTarget.value
 
   if (embedDialogMode.value === 'edit' && target) {
@@ -1839,44 +1826,14 @@ onBeforeUnmount(() => {
     </div>
   </div>
 
-  <!-- Embed URL dialog -->
-  <div v-if="embedDialogVisible" class="command-menu-mask" @click="closeEmbedDialog">
-    <div class="embed-dialog" @click.stop>
-      <div class="embed-dialog-title">{{ embedDialogTitle }}</div>
-      <div class="embed-dialog-body">
-        <label class="embed-field">
-          <span>网页地址（仅 HTTPS）</span>
-          <input
-            v-model="embedUrlInput"
-            class="command-input"
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            autofocus
-            @keydown.enter.prevent="confirmEmbed"
-            @keydown.escape.prevent="closeEmbedDialog"
-          />
-        </label>
-        <label class="embed-field">
-          <span>标题（可选）</span>
-          <input
-            v-model="embedTitleInput"
-            class="command-input"
-            type="text"
-            placeholder="内嵌网页"
-            @keydown.enter.prevent="confirmEmbed"
-            @keydown.escape.prevent="closeEmbedDialog"
-          />
-        </label>
-        <p v-if="embedUrlInput.trim() && !embedUrlValid" class="embed-url-error">
-          请输入合法的 HTTPS 链接
-        </p>
-      </div>
-      <div class="embed-dialog-actions">
-        <button type="button" class="btn" :disabled="!embedUrlValid" @click="confirmEmbed">{{ embedDialogConfirmText }}</button>
-        <button type="button" class="btn ghost" @click="closeEmbedDialog">取消</button>
-      </div>
-    </div>
-  </div>
+  <EmbedWebDialog
+    v-if="embedDialogVisible"
+    :mode="embedDialogMode"
+    :initial-url="embedDialogMode === 'edit' ? embedEditTarget?.sourceUrl ?? '' : ''"
+    :initial-title="embedDialogMode === 'edit' ? embedEditTarget?.title ?? '' : ''"
+    @cancel="closeEmbedDialog"
+    @confirm="confirmEmbed"
+  />
 
   <WhiteboardExcalidrawDialog
     v-if="whiteboardEditorVisible"
@@ -1896,6 +1853,11 @@ onBeforeUnmount(() => {
     @save="saveFlowchart"
   />
 </template>
+
+
+
+
+
 
 
 
