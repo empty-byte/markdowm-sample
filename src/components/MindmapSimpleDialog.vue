@@ -587,6 +587,42 @@ function disableRichTextPlugin(instance: MindMap) {
 }
 
 /**
+ * Handle disableScrollbarPlugin logic.
+ * @param instance - Parameter.
+ */
+function disableScrollbarPlugin(instance: MindMap) {
+  // simple-mind-map scrollbar plugin may call getBBox() on detached SVG groups.
+  const scrollbarInstance = (instance as unknown as { scrollbar?: { constructor?: unknown } }).scrollbar
+  const removePlugin = (instance as unknown as { removePlugin?: (plugin: unknown) => void }).removePlugin
+  if (!scrollbarInstance?.constructor || typeof removePlugin !== 'function') return
+
+  try {
+    removePlugin.call(instance, scrollbarInstance.constructor)
+  } catch {
+    // Ignore plugin detach failure and continue with editor usage.
+  }
+}
+
+/**
+ * Handle guardScrollbarUpdate logic.
+ * @param instance - Parameter.
+ */
+function guardScrollbarUpdate(instance: MindMap) {
+  // Defensive guard for runtime environments where SVG getBBox can throw.
+  const scrollbar = (instance as unknown as { scrollbar?: { updateScrollbar?: (...args: unknown[]) => unknown } }).scrollbar
+  if (!scrollbar || typeof scrollbar.updateScrollbar !== 'function') return
+
+  const rawUpdate = scrollbar.updateScrollbar.bind(scrollbar)
+  scrollbar.updateScrollbar = (...args: unknown[]) => {
+    try {
+      return rawUpdate(...args)
+    } catch {
+      return null
+    }
+  }
+}
+
+/**
  * Handle updateZoomPercent logic.
  */
 function updateZoomPercent() {
@@ -1373,9 +1409,12 @@ onMounted(() => {
       theme: scene.theme?.template || 'default',
       fit: true,
       mousewheelAction: 'zoom',
+      isShowScrollbar: false,
     } as unknown as ConstructorParameters<typeof MindMap>[0])
 
     disableRichTextPlugin(mindMap)
+    disableScrollbarPlugin(mindMap)
+    guardScrollbarUpdate(mindMap)
 
     if (scene.theme?.config || scene.view) {
       mindMap.setFullData(scene)

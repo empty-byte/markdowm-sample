@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+﻿<script setup lang="ts">
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { editorViewCtx } from '@milkdown/core'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { collab, collabServiceCtx } from '@milkdown/plugin-collab'
@@ -58,10 +58,13 @@ import createFlowchartNodeViewPlugin from '../features/editor-enhance/flowchart-
 import createMindmapNodeViewPlugin from '../features/editor-enhance/mindmap-node-view'
 import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
 import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
-import MindmapSimpleDialog from '../components/MindmapSimpleDialog.vue'
 import EmbedWebDialog from '../components/EmbedWebDialog.vue'
 import CommentPanel from '../components/CommentPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
+
+const MindmapSimpleDialog = defineAsyncComponent(
+  () => import('../components/MindmapSimpleDialog.vue')
+)
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -173,7 +176,20 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   },
 ]
 
-const initialMarkdown = ``
+const initialMarkdown = `# Q4 Content Strategy & Global Distribution
+
+## 1. Executive Overview
+
+In the evolving digital landscape, our editorial mission remains clear: to synthesize complex information into authoritative narratives. This quarter, we focus on **omni-channel synchronicity**, ensuring our core messaging remains consistent across whitepapers, social snippets, and interactive case studies.
+
+## 2. Core Methodology
+
+Our approach is divided into three distinct phases to ensure quality and scalability:
+
+1. Deep Research Phase
+2. Iterative Drafting
+3. Refinement & Polishing
+`
 
 const host = ref<HTMLDivElement | null>(null)
 const commentPanelRef = ref<{
@@ -1054,7 +1070,14 @@ async function rebuildEditor(seed?: string) {
   })
 
   crepe = instance
-  markdown.value = instance.getMarkdown()
+  const createdMarkdown = instance.getMarkdown()
+  markdown.value = createdMarkdown
+
+  if (!createdMarkdown.trim() && nextMarkdown.trim()) {
+    await syncEditorMarkdown(nextMarkdown)
+    markdown.value = instance.getMarkdown()
+  }
+
   syncSelectionState()
   updateActiveCommentRange()
 
@@ -1949,30 +1972,88 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="page milk-playground-page">
-    <h1>markdown富文本</h1>
-    <div class="toolbar">
+    <header class="editor-hero">
+      <div class="editor-last-modified">
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
+        <span>LAST MODIFIED: OCT 24, 2024</span>
+      </div>
+
+      <h1 class="editor-title">
+        Q4 Content Strategy &
+        <span>Global Distribution</span>
+      </h1>
+
+      <div class="editor-collab-row">
+        <div class="editor-collab-avatars">
+          <span
+            v-for="item in collaborators.slice(0, 2)"
+            :key="item.id"
+            class="editor-collab-avatar"
+            :style="{ '--avatar-color': item.color }"
+            :title="item.name"
+          >
+            {{ item.name.slice(0, 1).toUpperCase() }}
+          </span>
+          <span class="editor-collab-avatar count">+{{ Math.max(collaborators.length, 3) }}</span>
+        </div>
+        <span class="editor-collab-text">Editing now with Sarah and James</span>
+      </div>
+    </header>
+
+    <div class="toolbar action-bar">
       <button type="button" class="btn" @click="connectCollab">连接协同</button>
       <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>
       <span class="status" :data-online="status === 'connected'">{{ status }}</span>
-      <span class="status collab-count" :data-online="status === 'connected'">
-        {{ collaboratorCountLabel }}
-      </span>
-      <div v-if="collaborators.length" class="collab-presence">
-        <span
-          v-for="item in collaborators"
-          :key="item.id"
-          class="collab-user"
-          :class="{ local: item.isLocal }"
-          :style="{ '--user-color': item.color }"
-        >
-          <i class="collab-user-dot"></i>
-          {{ item.isLocal ? `${item.name}（我）` : item.name }}
-        </span>
-      </div>
+      <span class="status collab-count" :data-online="status === 'connected'">{{ collaboratorCountLabel }}</span>
+      <button type="button" class="btn ghost" :aria-expanded="markdownPaneVisible" @click="markdownPaneVisible = !markdownPaneVisible">
+        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
+      </button>
+      <button type="button" class="btn ghost" @click="void applyMarkdownFromPane">应用右侧 Markdown</button>
+      <button type="button" class="btn ghost" @click="resetSampleMarkdown">恢复示例</button>
+      <button type="button" class="btn ghost" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
+      <button type="button" class="btn ghost" @click="openPalette">功能面板 (Ctrl+K)</button>
     </div>
 
-    <div class="milk-workbench">
-      <section class="play-pane play-pane-editor">
+    <div class="floating-markdown-toolbar" aria-label="Formatting toolbar">
+      <button type="button" class="floating-tool-btn" title="Bold">
+        <span class="material-symbols-outlined">format_bold</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Italic">
+        <span class="material-symbols-outlined">format_italic</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Strike">
+        <span class="material-symbols-outlined">strikethrough_s</span>
+      </button>
+      <span class="floating-divider"></span>
+      <button type="button" class="floating-tool-btn" title="H1">
+        <span class="material-symbols-outlined">format_h1</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="H2">
+        <span class="material-symbols-outlined">format_h2</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="List">
+        <span class="material-symbols-outlined">format_list_bulleted</span>
+      </button>
+      <span class="floating-divider"></span>
+      <button type="button" class="floating-tool-btn" title="Checkbox">
+        <span class="material-symbols-outlined">check_box</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Code">
+        <span class="material-symbols-outlined">code</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Link">
+        <span class="material-symbols-outlined">link</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Image">
+        <span class="material-symbols-outlined">image</span>
+      </button>
+      <button type="button" class="floating-tool-btn" title="Quote">
+        <span class="material-symbols-outlined">format_quote</span>
+      </button>
+    </div>
+
+    <div class="milk-workbench editorial-workbench">
+      <section class="play-pane play-pane-editor editorial-pane">
         <header class="play-pane-head">
           <h3>Visual Editor</h3>
           <span>{{ activeThemeClass }}</span>
@@ -1980,9 +2061,9 @@ onBeforeUnmount(() => {
         <div class="play-editor-shell" :class="activeThemeClass">
           <div ref="host" class="playground-host"></div>
         </div>
-
       </section>
-      <aside class="play-side-panels">
+
+      <aside class="play-side-panels editorial-side-panels">
         <CommentPanel
           ref="commentPanelRef"
           :comments="comments"
@@ -2009,7 +2090,8 @@ onBeforeUnmount(() => {
           @delete-snapshot="deleteHistorySnapshot"
         />
       </aside>
-      <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown">
+
+      <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown editorial-pane">
         <header class="play-pane-head">
           <h3>Markdown</h3>
           <div class="play-pane-head-actions">
@@ -2031,7 +2113,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单；按 <code>Ctrl+K</code> 打开功能面板（主题、只读、Markdown 面板与同步等）；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；按 <code>Ctrl+K</code> 打开功能面板；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 
@@ -2103,6 +2185,8 @@ onBeforeUnmount(() => {
     @save="saveMindmap"
   />
 </template>
+
+
 
 
 
