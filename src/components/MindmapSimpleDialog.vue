@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import MindMap from 'simple-mind-map/full.js'
 import 'simple-mind-map/dist/simpleMindMap.esm.css'
 
@@ -58,8 +58,6 @@ interface MindmapTemplateChild {
   children?: MindmapTemplateChild[]
 }
 
-type MindmapInsertDirection = 'left' | 'right' | 'top' | 'bottom'
-
 interface MindmapTemplateItem {
   key: string
   label: string
@@ -99,6 +97,7 @@ const emit = defineEmits<{
 }>()
 
 const hostRef = ref<HTMLDivElement | null>(null)
+const canvasWrapRef = ref<HTMLDivElement | null>(null)
 const titleInput = ref(props.title || '思维导图')
 const saving = ref(false)
 const exporting = ref(false)
@@ -113,6 +112,11 @@ const canvasDropActive = ref(false)
 const selectedNodeUid = ref('')
 const selectedNodeIsRoot = ref(false)
 const nodeStyleForm = ref<MindmapNodeStyleForm>(createDefaultNodeStyleForm())
+const contextMenuRef = ref<HTMLDivElement | null>(null)
+const contextMenuVisible = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+const contextMenuTargetIsRoot = ref(false)
 
 let mindMap: MindMap | null = null
 let selectedNode: MindmapNodeInstance | null = null
@@ -121,6 +125,9 @@ let scaleListener: (() => void) | null = null
 let dataChangeListener: (() => void) | null = null
 let nodeActiveListener: ((node: unknown, activeNodeList: unknown) => void) | null = null
 let drawClickListener: (() => void) | null = null
+let nodeContextmenuListener: ((event: unknown, node: unknown) => void) | null = null
+let contextmenuListener: ((event: unknown) => void) | null = null
+let globalPointerListener: ((event: MouseEvent) => void) | null = null
 
 const dialogTitle = computed(() => (props.mode === 'edit' ? '编辑思维导图（simple-mind-map）' : '插入思维导图（simple-mind-map）'))
 const confirmText = computed(() => {
@@ -132,6 +139,7 @@ const exportButtonText = computed(() => (exporting.value ? '导出中...' : '导
 const jsonButtonText = computed(() => (jsonVisible.value ? '刷新 JSON' : '查看 JSON'))
 const hasSelectedNode = computed(() => Boolean(selectedNodeUid.value))
 const nodeTypeLabel = computed(() => (selectedNodeIsRoot.value ? '中心主题' : '分支主题'))
+const contextMenuTip = computed(() => (contextMenuTargetIsRoot.value ? '中心主题不可删除' : '可新增子节点/同级节点，或删除当前节点'))
 
 watch(
   () => props.title,
@@ -165,15 +173,10 @@ function createDefaultRoot(): MindmapRootNode {
     data: createPlainNodeData('中心主题'),
     children: [
       {
-        data: createPlainNodeData('分支主题 A'),
-        children: [{ data: createPlainNodeData('子主题 A1') }],
+        data: createPlainNodeData('分支主题 A', { dir: 'right' }),
       },
       {
-        data: createPlainNodeData('分支主题 B'),
-        children: [{ data: createPlainNodeData('子主题 B1') }],
-      },
-      {
-        data: createPlainNodeData('分支主题 C'),
+        data: createPlainNodeData('分支主题 B', { dir: 'left' }),
       },
     ],
   }
@@ -389,6 +392,60 @@ function getPrimaryTargetNode(): MindmapNodeInstance | null {
   const active = getActiveNodes()
   if (active.length > 0) return active[0]
   return getRootNode()
+}
+
+function hideContextMenu() {
+  contextMenuVisible.value = false
+}
+
+function isMouseEventLike(value: unknown): value is MouseEvent {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as MouseEvent
+  return typeof candidate.clientX === 'number' && typeof candidate.clientY === 'number'
+}
+
+function clampContextMenuWithinCanvas() {
+  const wrap = canvasWrapRef.value
+  const menu = contextMenuRef.value
+  if (!wrap || !menu) return
+
+  const minPadding = 8
+  const maxX = Math.max(minPadding, wrap.clientWidth - menu.offsetWidth - minPadding)
+  const maxY = Math.max(minPadding, wrap.clientHeight - menu.offsetHeight - minPadding)
+  contextMenuX.value = Math.min(maxX, Math.max(minPadding, contextMenuX.value))
+  contextMenuY.value = Math.min(maxY, Math.max(minPadding, contextMenuY.value))
+}
+
+function openContextMenu(event: MouseEvent, node: MindmapNodeInstance | null) {
+  if (saving.value) return
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (node) {
+    setSelection(node)
+    contextMenuTargetIsRoot.value = Boolean(node.isRoot)
+  } else {
+    contextMenuTargetIsRoot.value = selectedNodeIsRoot.value
+  }
+
+  const wrap = canvasWrapRef.value
+  if (!(wrap instanceof HTMLElement)) {
+    contextMenuX.value = 16
+    contextMenuY.value = 16
+    contextMenuVisible.value = true
+    return
+  }
+
+  const rect = wrap.getBoundingClientRect()
+  const rawX = event.clientX - rect.left + wrap.scrollLeft
+  const rawY = event.clientY - rect.top + wrap.scrollTop
+
+  contextMenuX.value = rawX
+  contextMenuY.value = rawY
+  contextMenuVisible.value = true
+  void nextTick(() => {
+    clampContextMenuWithinCanvas()
+  })
 }
 
 function getFullScene(): MindmapFullScene {
@@ -819,50 +876,6 @@ function addSiblingNodeQuick() {
   insertTemplateNode({ key: 'quick-sibling', label: '同级节点', text: '同级主题', hint: 'topic' }, 'sibling')
 }
 
-function insertDirectionalNode(direction: MindmapInsertDirection) {
-  if (!mindMap || saving.value) return
-  const instance = mindMap
-
-  const targetNode = getPrimaryTargetNode()
-  if (!targetNode) {
-    error.value = '未找到可插入的目标节点'
-    return
-  }
-
-  const insertSibling = (moveUp: boolean) => {
-    const siblingPayload = createInsertNodeData('同级主题')
-    instance.execCommand('INSERT_NODE', false, [targetNode], siblingPayload, [])
-    if (moveUp) {
-      instance.execCommand('UP_NODE')
-    }
-  }
-
-  if (targetNode.isRoot) {
-    const childPayload = createInsertNodeData('子主题', {
-      dir: direction === 'left' || direction === 'top' ? 'left' : 'right',
-    })
-    instance.execCommand('INSERT_CHILD_NODE', false, [targetNode], childPayload, [])
-    error.value = ''
-    return
-  }
-
-  if (direction === 'right') {
-    const childPayload = createInsertNodeData('子主题')
-    instance.execCommand('INSERT_CHILD_NODE', false, [targetNode], childPayload, [])
-    error.value = ''
-    return
-  }
-
-  if (direction === 'left' || direction === 'top') {
-    insertSibling(true)
-    error.value = ''
-    return
-  }
-
-  insertSibling(false)
-  error.value = ''
-}
-
 function removeSelectedNode() {
   if (!mindMap || saving.value || !selectedNode) return
 
@@ -878,6 +891,28 @@ function removeSelectedNode() {
     const active = getActiveNodes()
     setSelection(active[0] ?? null)
   })
+}
+
+function runContextMenuAction(action: 'child' | 'sibling' | 'delete') {
+  if (saving.value) return
+
+  switch (action) {
+    case 'child':
+      addChildNodeQuick()
+      break
+    case 'sibling':
+      addSiblingNodeQuick()
+      break
+    case 'delete':
+      if (!contextMenuTargetIsRoot.value) {
+        removeSelectedNode()
+      }
+      break
+    default:
+      break
+  }
+
+  hideContextMenu()
 }
 
 function getTemplateByKey(key: string): MindmapTemplateItem | null {
@@ -1097,15 +1132,37 @@ onMounted(() => {
     }
 
     drawClickListener = () => {
+      hideContextMenu()
       if (getActiveNodes().length <= 0) {
         setSelection(null)
       }
+    }
+
+    nodeContextmenuListener = (event: unknown, node: unknown) => {
+      const resolved = isMindmapNode(node) ? node : getPrimaryTargetNode()
+      if (!isMouseEventLike(event)) return
+      openContextMenu(event, resolved)
+    }
+
+    contextmenuListener = () => {
+      hideContextMenu()
+    }
+
+    globalPointerListener = (event: MouseEvent) => {
+      if (!contextMenuVisible.value) return
+      const menu = contextMenuRef.value
+      const target = event.target
+      if (menu && target instanceof Node && menu.contains(target)) return
+      hideContextMenu()
     }
 
     mindMap.on('scale', scaleListener)
     mindMap.on('data_change', dataChangeListener)
     mindMap.on('node_active', nodeActiveListener)
     mindMap.on('draw_click', drawClickListener)
+    mindMap.on('node_contextmenu', nodeContextmenuListener)
+    mindMap.on('contextmenu', contextmenuListener)
+    window.addEventListener('mousedown', globalPointerListener, true)
 
     const root = getRootNode()
     if (root) {
@@ -1128,6 +1185,9 @@ onBeforeUnmount(() => {
   if (mindMap && dataChangeListener) mindMap.off('data_change', dataChangeListener)
   if (mindMap && nodeActiveListener) mindMap.off('node_active', nodeActiveListener)
   if (mindMap && drawClickListener) mindMap.off('draw_click', drawClickListener)
+  if (mindMap && nodeContextmenuListener) mindMap.off('node_contextmenu', nodeContextmenuListener)
+  if (mindMap && contextmenuListener) mindMap.off('contextmenu', contextmenuListener)
+  if (globalPointerListener) window.removeEventListener('mousedown', globalPointerListener, true)
 
   mindMap?.destroy()
   mindMap = null
@@ -1163,38 +1223,6 @@ onBeforeUnmount(() => {
         <aside class="mindmap-palette">
           <div class="mindmap-palette-title">节点库（点击或拖拽）</div>
 
-          <div class="mindmap-palette-quick">
-            <button type="button" class="mindmap-quick-btn" :disabled="saving" @click="addChildNodeQuick">+ 子节点</button>
-            <button type="button" class="mindmap-quick-btn" :disabled="saving" @click="addSiblingNodeQuick">+ 同级节点</button>
-            <button
-              type="button"
-              class="mindmap-quick-btn danger"
-              :disabled="saving || !hasSelectedNode || selectedNodeIsRoot"
-              @click="removeSelectedNode"
-            >
-              删除节点
-            </button>
-          </div>
-
-          <div class="mindmap-direction-pad" role="group" aria-label="方向添加节点">
-            <button type="button" class="mindmap-direction-btn is-top" :disabled="saving" @click="insertDirectionalNode('top')">
-              上方添加
-            </button>
-            <button type="button" class="mindmap-direction-btn is-left" :disabled="saving" @click="insertDirectionalNode('left')">
-              左侧添加
-            </button>
-            <button type="button" class="mindmap-direction-btn is-right" :disabled="saving" @click="insertDirectionalNode('right')">
-              右侧添加
-            </button>
-            <button type="button" class="mindmap-direction-btn is-bottom" :disabled="saving" @click="insertDirectionalNode('bottom')">
-              下方添加
-            </button>
-          </div>
-
-          <div class="mindmap-palette-tip">
-            方向添加规则：上方=同级前置，下方=同级后置，右侧=子节点，左侧=同级前置（中心主题时为左分支子节点）。
-          </div>
-
           <div class="mindmap-template-grid">
             <button
               v-for="item in templateItems"
@@ -1215,6 +1243,7 @@ onBeforeUnmount(() => {
         </aside>
 
         <div
+          ref="canvasWrapRef"
           class="mindmap-canvas-wrap"
           :class="{ 'is-drop-active': canvasDropActive }"
           @dragover="onCanvasDragOver"
@@ -1223,6 +1252,29 @@ onBeforeUnmount(() => {
         >
           <div ref="hostRef" class="mindmap-editor-host"></div>
           <div v-if="canvasDropActive" class="mindmap-drop-hint">释放鼠标即可添加节点</div>
+          <div
+            v-if="contextMenuVisible"
+            ref="contextMenuRef"
+            class="mindmap-node-context-menu"
+            :style="{ left: `${contextMenuX}px`, top: `${contextMenuY}px` }"
+            @mousedown.stop
+            @click.stop
+          >
+            <div class="mindmap-context-title">节点操作</div>
+            <div class="mindmap-context-grid">
+              <button type="button" class="mindmap-context-btn" :disabled="saving" @click="runContextMenuAction('child')">+ 子节点</button>
+              <button type="button" class="mindmap-context-btn" :disabled="saving" @click="runContextMenuAction('sibling')">+ 同级节点</button>
+            </div>
+            <button
+              type="button"
+              class="mindmap-context-btn danger"
+              :disabled="saving || contextMenuTargetIsRoot"
+              @click="runContextMenuAction('delete')"
+            >
+              删除节点
+            </button>
+            <div class="mindmap-context-tip">{{ contextMenuTip }}</div>
+          </div>
 
           <div class="mindmap-canvas-toolbar" role="toolbar" aria-label="思维导图工具栏">
             <button type="button" class="mindmap-tool-btn" :disabled="saving" @click="zoomIn">放大</button>
@@ -1238,7 +1290,7 @@ onBeforeUnmount(() => {
           <div class="mindmap-canvas-footer">
             <button type="button" class="mindmap-helper-btn" :disabled="saving" @click="setDefaultScene">恢复示例</button>
             <button type="button" class="mindmap-helper-btn" :disabled="saving" @click="clearScene">清空画布</button>
-            <span class="mindmap-tools-tip">节点可直接拖拽调整结构，双击节点编辑文字，Tab 新建子节点，Enter 新建同级节点</span>
+            <span class="mindmap-tools-tip">节点可拖拽调整，双击编辑文字，右键打开节点菜单，Tab 新建子节点，Enter 新建同级节点</span>
           </div>
         </div>
 
@@ -1426,88 +1478,6 @@ onBeforeUnmount(() => {
   color: #27425e;
 }
 
-.mindmap-palette-quick {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.mindmap-quick-btn {
-  border: 1px solid #cfddef;
-  background: #ffffff;
-  color: #21405e;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.mindmap-quick-btn:hover {
-  border-color: #96b4da;
-  background: #f3f8ff;
-}
-
-.mindmap-quick-btn.danger {
-  grid-column: 1 / -1;
-  color: #a83a3d;
-  border-color: #e6c7cb;
-  background: #fff8f8;
-}
-
-.mindmap-direction-pad {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-areas:
-    '. top .'
-    'left . right'
-    '. bottom .';
-  gap: 6px;
-  align-items: center;
-}
-
-.mindmap-direction-btn {
-  height: 34px;
-  border: 1px solid #c8d7ed;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #22405f;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.mindmap-direction-btn:hover {
-  border-color: #93b4dd;
-  background: #f2f7ff;
-}
-
-.mindmap-direction-btn.is-top {
-  grid-area: top;
-}
-
-.mindmap-direction-btn.is-left {
-  grid-area: left;
-}
-
-.mindmap-direction-btn.is-right {
-  grid-area: right;
-}
-
-.mindmap-direction-btn.is-bottom {
-  grid-area: bottom;
-}
-
-.mindmap-palette-tip {
-  border: 1px dashed #c6d7ed;
-  background: #f8fbff;
-  border-radius: 10px;
-  padding: 10px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #4d6a8a;
-}
-
 .mindmap-template-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1644,6 +1614,68 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
   pointer-events: none;
+}
+
+.mindmap-node-context-menu {
+  position: absolute;
+  z-index: 36;
+  width: 196px;
+  border: 1px solid #cad9ee;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 30px rgba(15, 33, 54, 0.24);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}
+
+.mindmap-context-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a4564;
+}
+
+.mindmap-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mindmap-context-btn {
+  border: 1px solid #c8d9ef;
+  background: #f8fbff;
+  color: #234364;
+  border-radius: 9px;
+  height: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mindmap-context-btn:hover:not(:disabled) {
+  border-color: #96b5da;
+  background: #eef5ff;
+}
+
+.mindmap-context-btn.danger {
+  color: #a33c40;
+  border-color: #e4c7cb;
+  background: #fff8f8;
+}
+
+.mindmap-context-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mindmap-context-tip {
+  border: 1px dashed #c7d8ee;
+  border-radius: 9px;
+  padding: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #57708f;
 }
 
 .mindmap-canvas-toolbar {
