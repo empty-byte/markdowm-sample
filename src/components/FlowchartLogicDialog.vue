@@ -14,6 +14,29 @@ interface FlowchartSavePayload {
   scene: FlowchartSceneSnapshot
 }
 
+interface FlowchartNodeStyleForm {
+  text: string
+  textColor: string
+  fontSize: number
+  fill: string
+  stroke: string
+  strokeWidth: number
+  width: number
+  height: number
+  radius: number
+}
+
+interface FlowchartEditableNodeModel {
+  id: string
+  type: string
+  width?: number
+  height?: number
+  radius?: number
+  properties?: Record<string, unknown>
+  getNodeStyle?: () => Record<string, unknown>
+  getTextStyle?: () => Record<string, unknown>
+}
+
 type PaletteGroupKey = 'basic' | 'flow' | 'bpmn' | 'assist'
 type PaletteNodeType = string
 type PaletteShapeHint = 'rect' | 'round' | 'circle' | 'diamond' | 'ellipse' | 'text' | 'task' | 'gateway' | 'event' | 'comment'
@@ -74,6 +97,20 @@ const paletteItems: PaletteItem[] = [
 
 const paletteItemMap = new Map<PaletteNodeType, PaletteItem>(paletteItems.map((item) => [item.key, item]))
 
+function createDefaultNodeStyleForm(): FlowchartNodeStyleForm {
+  return {
+    text: '',
+    textColor: '#102030',
+    fontSize: 13,
+    fill: '#ffffff',
+    stroke: '#7e95b2',
+    strokeWidth: 1.2,
+    width: 120,
+    height: 56,
+    radius: 8,
+  }
+}
+
 const props = defineProps<{
   mode: 'insert' | 'edit'
   title: string
@@ -99,10 +136,17 @@ const jsonContent = ref('')
 const jsonCopied = ref(false)
 const draggingPaletteKey = ref<PaletteNodeType | null>(null)
 const canvasDropActive = ref(false)
+const selectedNodeId = ref<string | null>(null)
+const selectedNodeType = ref('')
+const nodeStyleForm = ref<FlowchartNodeStyleForm>(createDefaultNodeStyleForm())
 
 let lf: LogicFlow | null = null
 let nodeSeed = 0
 let copyTimer: ReturnType<typeof setTimeout> | null = null
+let nodeClickListener: ((payload: unknown) => void) | null = null
+let blankClickListener: ((payload: unknown) => void) | null = null
+let nodeDeleteListener: ((payload: unknown) => void) | null = null
+let nodeResizeListener: ((payload: unknown) => void) | null = null
 
 const dialogTitle = computed(() => (props.mode === 'edit' ? '编辑流程图（LogicFlow）' : '插入流程图（LogicFlow）'))
 const confirmText = computed(() => {
@@ -118,6 +162,13 @@ const paletteItemsByGroup = computed(() =>
     items: paletteItems.filter((item) => item.group === group.key),
   }))
 )
+const hasSelectedNode = computed(() => Boolean(selectedNodeId.value))
+const nodeTypeBadge = computed(() => selectedNodeType.value || '未选择')
+const nodeSupportsSize = computed(() => selectedNodeType.value !== 'text')
+const nodeSupportsRadius = computed(() => {
+  const type = selectedNodeType.value.toLowerCase()
+  return type.includes('rect') || type.includes('task')
+})
 
 watch(
   () => props.title,
@@ -125,6 +176,135 @@ watch(
     titleInput.value = value || '流程图'
   }
 )
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function extractNodeText(text: unknown): string {
+  if (typeof text === 'string') return text
+  if (text && typeof text === 'object') {
+    const rawValue = (text as { value?: unknown }).value
+    if (typeof rawValue === 'string') return rawValue
+  }
+  return ''
+}
+
+function toClampedNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, parsed))
+}
+
+function getNodeIdFromEventPayload(payload: unknown): string | null {
+  const data = asRecord(asRecord(payload).data)
+  const id = data.id
+  return typeof id === 'string' && id ? id : null
+}
+
+function clearSelectedNode() {
+  selectedNodeId.value = null
+  selectedNodeType.value = ''
+  nodeStyleForm.value = createDefaultNodeStyleForm()
+}
+
+function readSelectedNodeStyle(nodeId: string): FlowchartNodeStyleForm | null {
+  if (!lf) return null
+  const nodeData = lf.getNodeDataById(nodeId) as { text?: unknown } | undefined
+  const nodeModel = lf.getNodeModelById(nodeId) as FlowchartEditableNodeModel | undefined
+  if (!nodeModel) return null
+
+  const defaultForm = createDefaultNodeStyleForm()
+  const nodeStyle = asRecord(nodeModel.getNodeStyle?.())
+  const textStyle = asRecord(nodeModel.getTextStyle?.())
+
+  return {
+    text: extractNodeText(nodeData?.text),
+    textColor: typeof textStyle.color === 'string' ? textStyle.color : defaultForm.textColor,
+    fontSize: toClampedNumber(textStyle.fontSize, defaultForm.fontSize, 10, 72),
+    fill: typeof nodeStyle.fill === 'string' ? nodeStyle.fill : defaultForm.fill,
+    stroke: typeof nodeStyle.stroke === 'string' ? nodeStyle.stroke : defaultForm.stroke,
+    strokeWidth: toClampedNumber(nodeStyle.strokeWidth, defaultForm.strokeWidth, 0, 12),
+    width: toClampedNumber(nodeModel.width, defaultForm.width, 36, 560),
+    height: toClampedNumber(nodeModel.height, defaultForm.height, 28, 360),
+    radius: toClampedNumber(nodeModel.radius, defaultForm.radius, 0, 80),
+  }
+}
+
+function selectNode(nodeId: string) {
+  if (!lf) return
+  const nodeModel = lf.getNodeModelById(nodeId) as FlowchartEditableNodeModel | undefined
+  if (!nodeModel) {
+    clearSelectedNode()
+    return
+  }
+
+  selectedNodeId.value = nodeId
+  selectedNodeType.value = nodeModel.type || ''
+  const styleForm = readSelectedNodeStyle(nodeId)
+  if (styleForm) nodeStyleForm.value = styleForm
+}
+
+function applySelectedNodeStyle() {
+  if (!lf || !selectedNodeId.value) return
+
+  const normalized: FlowchartNodeStyleForm = {
+    text: String(nodeStyleForm.value.text ?? ''),
+    textColor: String(nodeStyleForm.value.textColor || '#102030'),
+    fontSize: toClampedNumber(nodeStyleForm.value.fontSize, 13, 10, 72),
+    fill: String(nodeStyleForm.value.fill || '#ffffff'),
+    stroke: String(nodeStyleForm.value.stroke || '#7e95b2'),
+    strokeWidth: toClampedNumber(nodeStyleForm.value.strokeWidth, 1.2, 0, 12),
+    width: toClampedNumber(nodeStyleForm.value.width, 120, 36, 560),
+    height: toClampedNumber(nodeStyleForm.value.height, 56, 28, 360),
+    radius: toClampedNumber(nodeStyleForm.value.radius, 8, 0, 80),
+  }
+
+  nodeStyleForm.value = normalized
+
+  const properties: Record<string, unknown> = {
+    style: {
+      fill: normalized.fill,
+      stroke: normalized.stroke,
+      strokeWidth: normalized.strokeWidth,
+    },
+    textStyle: {
+      color: normalized.textColor,
+      fontSize: normalized.fontSize,
+    },
+  }
+
+  if (nodeSupportsSize.value) {
+    properties.width = normalized.width
+    properties.height = normalized.height
+  }
+
+  if (nodeSupportsRadius.value) {
+    properties.radius = normalized.radius
+  }
+
+  lf.setProperties(selectedNodeId.value, properties)
+  lf.updateText(selectedNodeId.value, normalized.text)
+}
+
+function resetSelectedNodeStyle() {
+  if (!selectedNodeId.value) return
+  const defaults = createDefaultNodeStyleForm()
+  nodeStyleForm.value = {
+    ...nodeStyleForm.value,
+    textColor: defaults.textColor,
+    fontSize: defaults.fontSize,
+    fill: defaults.fill,
+    stroke: defaults.stroke,
+    strokeWidth: defaults.strokeWidth,
+    radius: nodeSupportsRadius.value ? defaults.radius : nodeStyleForm.value.radius,
+  }
+  applySelectedNodeStyle()
+}
+
+function onNodeStyleInput() {
+  applySelectedNodeStyle()
+}
 
 function onCancel() {
   if (saving.value) return
@@ -332,6 +512,7 @@ function onCanvasDrop(event: DragEvent) {
 function resetDefaultScene() {
   if (!lf || saving.value) return
   lf.render(createDefaultScene())
+  clearSelectedNode()
   applyDefaultViewport()
   refreshNodeSeed()
 }
@@ -339,6 +520,7 @@ function resetDefaultScene() {
 function clearScene() {
   if (!lf || saving.value) return
   lf.clearData()
+  clearSelectedNode()
   refreshNodeSeed()
   updateZoomPercent()
 }
@@ -549,6 +731,30 @@ onMounted(() => {
   applyDefaultViewport()
   refreshNodeSeed()
 
+  nodeClickListener = (payload: unknown) => {
+    const nodeId = getNodeIdFromEventPayload(payload)
+    if (!nodeId) return
+    selectNode(nodeId)
+  }
+  blankClickListener = () => {
+    clearSelectedNode()
+  }
+  nodeDeleteListener = (payload: unknown) => {
+    const nodeId = getNodeIdFromEventPayload(payload)
+    if (!nodeId) return
+    if (selectedNodeId.value === nodeId) clearSelectedNode()
+  }
+  nodeResizeListener = (payload: unknown) => {
+    const nodeId = getNodeIdFromEventPayload(payload)
+    if (!nodeId) return
+    if (selectedNodeId.value === nodeId) selectNode(nodeId)
+  }
+
+  lf.on('node:click', nodeClickListener)
+  lf.on('blank:click', blankClickListener)
+  lf.on('node:delete', nodeDeleteListener)
+  lf.on('node:resize', nodeResizeListener)
+
   requestAnimationFrame(() => {
     showMiniMap()
   })
@@ -556,6 +762,14 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (copyTimer) clearTimeout(copyTimer)
+  if (lf && nodeClickListener) lf.off('node:click', nodeClickListener)
+  if (lf && blankClickListener) lf.off('blank:click', blankClickListener)
+  if (lf && nodeDeleteListener) lf.off('node:delete', nodeDeleteListener)
+  if (lf && nodeResizeListener) lf.off('node:resize', nodeResizeListener)
+  nodeClickListener = null
+  blankClickListener = null
+  nodeDeleteListener = null
+  nodeResizeListener = null
   lf?.destroy()
   lf = null
 })
@@ -639,6 +853,134 @@ onBeforeUnmount(() => {
             <span class="flowchart-tools-tip">支持拖拽节点入画布，拖动锚点可连线，双击节点可编辑文字</span>
           </div>
         </div>
+
+        <aside class="flowchart-style-panel" :class="{ 'is-empty': !hasSelectedNode }">
+          <div class="flowchart-style-title">节点属性</div>
+          <template v-if="hasSelectedNode">
+            <div class="flowchart-style-meta">
+              <span class="flowchart-style-type">{{ nodeTypeBadge }}</span>
+              <span class="flowchart-style-id">{{ selectedNodeId }}</span>
+            </div>
+
+            <label class="flowchart-style-field">
+              <span>文字内容</span>
+              <input
+                v-model="nodeStyleForm.text"
+                type="text"
+                class="command-input"
+                :disabled="saving"
+                @input="onNodeStyleInput"
+              />
+            </label>
+
+            <div class="flowchart-style-row">
+              <label class="flowchart-style-field">
+                <span>文字颜色</span>
+                <input
+                  v-model="nodeStyleForm.textColor"
+                  type="color"
+                  class="flowchart-color-input"
+                  :disabled="saving"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+              <label class="flowchart-style-field">
+                <span>字号</span>
+                <input
+                  v-model.number="nodeStyleForm.fontSize"
+                  type="number"
+                  class="command-input flowchart-number-input"
+                  min="10"
+                  max="72"
+                  :disabled="saving"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+            </div>
+
+            <div class="flowchart-style-row">
+              <label class="flowchart-style-field">
+                <span>背景色</span>
+                <input
+                  v-model="nodeStyleForm.fill"
+                  type="color"
+                  class="flowchart-color-input"
+                  :disabled="saving"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+              <label class="flowchart-style-field">
+                <span>边框色</span>
+                <input
+                  v-model="nodeStyleForm.stroke"
+                  type="color"
+                  class="flowchart-color-input"
+                  :disabled="saving"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+            </div>
+
+            <label class="flowchart-style-field">
+              <span>边框粗细</span>
+              <input
+                v-model.number="nodeStyleForm.strokeWidth"
+                type="number"
+                class="command-input flowchart-number-input"
+                min="0"
+                max="12"
+                step="0.2"
+                :disabled="saving"
+                @input="onNodeStyleInput"
+              />
+            </label>
+
+            <div class="flowchart-style-row">
+              <label class="flowchart-style-field">
+                <span>宽度</span>
+                <input
+                  v-model.number="nodeStyleForm.width"
+                  type="number"
+                  class="command-input flowchart-number-input"
+                  min="36"
+                  max="560"
+                  :disabled="saving || !nodeSupportsSize"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+              <label class="flowchart-style-field">
+                <span>高度</span>
+                <input
+                  v-model.number="nodeStyleForm.height"
+                  type="number"
+                  class="command-input flowchart-number-input"
+                  min="28"
+                  max="360"
+                  :disabled="saving || !nodeSupportsSize"
+                  @input="onNodeStyleInput"
+                />
+              </label>
+            </div>
+
+            <label class="flowchart-style-field">
+              <span>圆角</span>
+              <input
+                v-model.number="nodeStyleForm.radius"
+                type="number"
+                class="command-input flowchart-number-input"
+                min="0"
+                max="80"
+                :disabled="saving || !nodeSupportsRadius"
+                @input="onNodeStyleInput"
+              />
+            </label>
+
+            <button type="button" class="flowchart-style-reset" :disabled="saving" @click="resetSelectedNodeStyle">
+              重置样式
+            </button>
+          </template>
+          <div v-else class="flowchart-style-empty-tip">点击画布中的节点后，可在这里编辑样式与尺寸。</div>
+        </aside>
       </div>
 
       <p v-if="error" class="flowchart-editor-error">{{ error }}</p>
@@ -725,7 +1067,7 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px 1fr 268px;
   background: #f1f5fc;
 }
 
@@ -734,6 +1076,101 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, #f9fbff 0%, #f3f7ff 100%);
   padding: 10px;
   overflow: auto;
+}
+
+.flowchart-style-panel {
+  border-left: 1px solid #dce5f2;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8ff 100%);
+  padding: 12px 10px;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.flowchart-style-panel.is-empty {
+  justify-items: stretch;
+}
+
+.flowchart-style-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #24405f;
+}
+
+.flowchart-style-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.flowchart-style-type {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #b8cae3;
+  background: #f7fbff;
+  color: #2d4d72;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flowchart-style-id {
+  font-size: 11px;
+  color: #637d9a;
+  word-break: break-all;
+}
+
+.flowchart-style-field {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #335270;
+}
+
+.flowchart-style-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flowchart-color-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid #c9d9ec;
+  border-radius: 8px;
+  background: #fff;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.flowchart-number-input {
+  width: 100%;
+}
+
+.flowchart-style-reset {
+  border: 1px solid #c6d8ef;
+  background: #fff;
+  color: #244361;
+  border-radius: 8px;
+  height: 32px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.flowchart-style-reset:hover {
+  border-color: #94b1d7;
+  background: #f3f8ff;
+}
+
+.flowchart-style-empty-tip {
+  font-size: 12px;
+  color: #5e7896;
+  border: 1px dashed #c5d5e9;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 12px;
+  line-height: 1.5;
 }
 
 .flowchart-palette-title {
