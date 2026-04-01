@@ -1,11 +1,12 @@
 ﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue'
 import LogicFlow from '@logicflow/core'
-import { MiniMap, Snapshot } from '@logicflow/extension'
+import { BpmnElement, MiniMap, Snapshot } from '@logicflow/extension'
 import '@logicflow/core/es/index.css'
 import '@logicflow/extension/es/index.css'
 
 type FlowchartSceneSnapshot = Parameters<LogicFlow['render']>[0]
+type FlowchartNodeConfig = Parameters<LogicFlow['addNode']>[0]
 
 interface FlowchartSavePayload {
   title: string
@@ -13,22 +14,65 @@ interface FlowchartSavePayload {
   scene: FlowchartSceneSnapshot
 }
 
-type PaletteNodeType = 'start' | 'process' | 'decision' | 'rerun' | 'parallel' | 'end'
+type PaletteGroupKey = 'basic' | 'flow' | 'bpmn' | 'assist'
+type PaletteNodeType = string
+type PaletteShapeHint = 'rect' | 'round' | 'circle' | 'diamond' | 'ellipse' | 'text' | 'task' | 'gateway' | 'event' | 'comment'
+
+interface PaletteGroup {
+  key: PaletteGroupKey
+  label: string
+}
+
+interface PaletteNodeTemplate {
+  type: string
+  text: string
+  width?: number
+  height?: number
+  radius?: number
+}
 
 interface PaletteItem {
   key: PaletteNodeType
   label: string
-  hint: string
+  hint: PaletteShapeHint
+  group: PaletteGroupKey
+  template: PaletteNodeTemplate
 }
 
-const paletteItems: PaletteItem[] = [
-  { key: 'start', label: '开始', hint: 'circle' },
-  { key: 'process', label: '处理', hint: 'rect' },
-  { key: 'decision', label: '判断', hint: 'diamond' },
-  { key: 'rerun', label: '重复', hint: 'rect' },
-  { key: 'parallel', label: '并行', hint: 'rect' },
-  { key: 'end', label: '结束', hint: 'circle' },
+const paletteGroups: PaletteGroup[] = [
+  { key: 'flow', label: '流程图' },
+  { key: 'basic', label: '基础图形' },
+  { key: 'bpmn', label: 'BPMN' },
+  { key: 'assist', label: '辅助' },
 ]
+
+const paletteItems: PaletteItem[] = [
+  { key: 'start', label: '开始', hint: 'circle', group: 'flow', template: { type: 'circle', text: '开始' } },
+  { key: 'process', label: '处理', hint: 'rect', group: 'flow', template: { type: 'rect', text: '处理', width: 118, height: 52 } },
+  { key: 'decision', label: '判断', hint: 'diamond', group: 'flow', template: { type: 'diamond', text: '判断', width: 96, height: 62 } },
+  { key: 'input', label: '输入输出', hint: 'round', group: 'flow', template: { type: 'rect', text: '输入输出', width: 128, height: 52, radius: 10 } },
+  { key: 'sub-process', label: '子流程', hint: 'task', group: 'flow', template: { type: 'rect', text: '子流程', width: 136, height: 58, radius: 12 } },
+  { key: 'parallel', label: '并行', hint: 'rect', group: 'flow', template: { type: 'rect', text: '并行', width: 118, height: 52 } },
+  { key: 'rerun', label: '重复', hint: 'round', group: 'flow', template: { type: 'rect', text: '重复', width: 118, height: 52, radius: 8 } },
+  { key: 'end', label: '结束', hint: 'circle', group: 'flow', template: { type: 'circle', text: '结束' } },
+  { key: 'basic-rect', label: '矩形', hint: 'rect', group: 'basic', template: { type: 'rect', text: '矩形', width: 118, height: 52 } },
+  { key: 'basic-round', label: '圆角矩形', hint: 'round', group: 'basic', template: { type: 'rect', text: '圆角', width: 118, height: 52, radius: 12 } },
+  { key: 'basic-circle', label: '圆形', hint: 'circle', group: 'basic', template: { type: 'circle', text: '圆形' } },
+  { key: 'basic-ellipse', label: '椭圆', hint: 'ellipse', group: 'basic', template: { type: 'ellipse', text: '椭圆', width: 128, height: 62 } },
+  { key: 'basic-diamond', label: '菱形', hint: 'diamond', group: 'basic', template: { type: 'diamond', text: '菱形', width: 96, height: 64 } },
+  { key: 'basic-text', label: '文本', hint: 'text', group: 'basic', template: { type: 'text', text: '文本说明' } },
+  { key: 'bpmn-start', label: '开始事件', hint: 'event', group: 'bpmn', template: { type: 'bpmn:startEvent', text: '开始' } },
+  { key: 'bpmn-task', label: '用户任务', hint: 'task', group: 'bpmn', template: { type: 'bpmn:userTask', text: '用户任务', width: 130, height: 60 } },
+  { key: 'bpmn-service', label: '服务任务', hint: 'task', group: 'bpmn', template: { type: 'bpmn:serviceTask', text: '服务任务', width: 130, height: 60 } },
+  { key: 'bpmn-gateway', label: '网关', hint: 'gateway', group: 'bpmn', template: { type: 'bpmn:exclusiveGateway', text: '网关' } },
+  { key: 'bpmn-end', label: '结束事件', hint: 'event', group: 'bpmn', template: { type: 'bpmn:endEvent', text: '结束' } },
+  { key: 'assist-note', label: '注释', hint: 'comment', group: 'assist', template: { type: 'text', text: '注释' } },
+  { key: 'assist-tag', label: '标签', hint: 'round', group: 'assist', template: { type: 'rect', text: '标签', width: 90, height: 42, radius: 8 } },
+  { key: 'assist-milestone', label: '里程碑', hint: 'ellipse', group: 'assist', template: { type: 'ellipse', text: '里程碑', width: 132, height: 62 } },
+  { key: 'assist-group', label: '分组框', hint: 'rect', group: 'assist', template: { type: 'rect', text: '分组', width: 210, height: 120, radius: 8 } },
+]
+
+const paletteItemMap = new Map<PaletteNodeType, PaletteItem>(paletteItems.map((item) => [item.key, item]))
 
 const props = defineProps<{
   mode: 'insert' | 'edit'
@@ -53,6 +97,8 @@ const zoomPercent = ref(100)
 const jsonVisible = ref(false)
 const jsonContent = ref('')
 const jsonCopied = ref(false)
+const draggingPaletteKey = ref<PaletteNodeType | null>(null)
+const canvasDropActive = ref(false)
 
 let lf: LogicFlow | null = null
 let nodeSeed = 0
@@ -66,6 +112,12 @@ const confirmText = computed(() => {
 const fullscreenButtonText = computed(() => (isFullscreen.value ? '退出全屏' : '全屏编辑'))
 const exportButtonText = computed(() => (exporting.value ? '导出中...' : '导出图片'))
 const jsonButtonText = computed(() => (jsonVisible.value ? '刷新 JSON' : '查看 JSON'))
+const paletteItemsByGroup = computed(() =>
+  paletteGroups.map((group) => ({
+    ...group,
+    items: paletteItems.filter((item) => item.group === group.key),
+  }))
+)
 
 watch(
   () => props.title,
@@ -90,6 +142,7 @@ function toggleFullscreen() {
 function ensureExtensions() {
   if (flowchartExtensionsInstalled) return
   LogicFlow.use(Snapshot)
+  LogicFlow.use(BpmnElement)
   LogicFlow.use(MiniMap, {
     width: 150,
     height: 108,
@@ -164,29 +217,116 @@ function refreshNodeSeed() {
   nodeSeed = Array.isArray(graph.nodes) ? graph.nodes.length : 0
 }
 
-function getNodeConfigByPalette(type: PaletteNodeType) {
-  if (type === 'start') return { nodeType: 'circle', text: '开始' }
-  if (type === 'process') return { nodeType: 'rect', text: '处理' }
-  if (type === 'decision') return { nodeType: 'diamond', text: '判断' }
-  if (type === 'rerun') return { nodeType: 'rect', text: '重复' }
-  if (type === 'parallel') return { nodeType: 'rect', text: '并行' }
-  return { nodeType: 'circle', text: '结束' }
+function getPaletteItem(type: PaletteNodeType): PaletteItem | null {
+  return paletteItemMap.get(type) ?? null
 }
 
-function addNodeByType(type: PaletteNodeType) {
-  if (!lf || saving.value) return
-
+function getNextAutoPosition() {
   nodeSeed += 1
   const col = (nodeSeed - 1) % 5
   const row = Math.floor((nodeSeed - 1) / 5)
-  const config = getNodeConfigByPalette(type)
-
-  lf.addNode({
-    type: config.nodeType,
-    x: 240 + col * 190,
+  return {
+    x: 260 + col * 190,
     y: 150 + row * 120,
-    text: config.text,
-  })
+  }
+}
+
+function addPaletteNode(item: PaletteItem, x?: number, y?: number) {
+  if (!lf || saving.value) return
+
+  const autoPosition = getNextAutoPosition()
+  const targetX = Number.isFinite(x) ? Number(x) : autoPosition.x
+  const targetY = Number.isFinite(y) ? Number(y) : autoPosition.y
+
+  const nodeConfig: FlowchartNodeConfig = {
+    type: item.template.type,
+    x: Math.round(targetX),
+    y: Math.round(targetY),
+    text: item.template.text,
+  }
+
+  if (typeof item.template.width === 'number') nodeConfig.width = item.template.width
+  if (typeof item.template.height === 'number') nodeConfig.height = item.template.height
+  if (typeof item.template.radius === 'number') nodeConfig.radius = item.template.radius
+
+  lf.addNode(nodeConfig)
+}
+
+function addNodeByType(type: PaletteNodeType) {
+  const item = getPaletteItem(type)
+  if (!item) return
+  addPaletteNode(item)
+}
+
+function getPaletteKeyFromTransfer(dataTransfer: DataTransfer | null): PaletteNodeType | null {
+  if (!dataTransfer) return null
+  return dataTransfer.getData('application/x-flowchart-node') || dataTransfer.getData('text/plain') || null
+}
+
+function hasPaletteDragPayload(dataTransfer: DataTransfer | null): boolean {
+  if (draggingPaletteKey.value) return true
+  if (!dataTransfer) return false
+  const types = Array.from(dataTransfer.types ?? [])
+  return types.includes('application/x-flowchart-node') || types.includes('text/plain')
+}
+
+function onPaletteDragStart(event: DragEvent, type: PaletteNodeType) {
+  if (saving.value) return
+
+  const item = getPaletteItem(type)
+  if (!item || !event.dataTransfer) return
+
+  draggingPaletteKey.value = type
+  event.dataTransfer.effectAllowed = 'copy'
+  event.dataTransfer.setData('application/x-flowchart-node', type)
+  event.dataTransfer.setData('text/plain', type)
+}
+
+function onPaletteDragEnd() {
+  draggingPaletteKey.value = null
+}
+
+function onCanvasDragOver(event: DragEvent) {
+  if (saving.value) return
+
+  if (!hasPaletteDragPayload(event.dataTransfer)) return
+
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+  canvasDropActive.value = true
+}
+
+function onCanvasDragLeave(event: DragEvent) {
+  const wrapper = event.currentTarget as HTMLElement | null
+  const relatedTarget = event.relatedTarget as Node | null
+  if (wrapper && relatedTarget && wrapper.contains(relatedTarget)) return
+  canvasDropActive.value = false
+}
+
+function onCanvasDrop(event: DragEvent) {
+  event.preventDefault()
+  canvasDropActive.value = false
+  if (saving.value || !lf) return
+
+  const paletteKey = getPaletteKeyFromTransfer(event.dataTransfer) || draggingPaletteKey.value
+  draggingPaletteKey.value = null
+  if (!paletteKey) return
+
+  const item = getPaletteItem(paletteKey)
+  if (!item) return
+
+  const point = lf.getPointByClient(event.clientX, event.clientY) as {
+    canvasOverlayPosition?: { x: number; y: number }
+    domOverlayPosition?: { x: number; y: number }
+  }
+  const canvasPoint = point.canvasOverlayPosition ?? point.domOverlayPosition
+
+  if (canvasPoint && Number.isFinite(canvasPoint.x) && Number.isFinite(canvasPoint.y)) {
+    addPaletteNode(item, canvasPoint.x, canvasPoint.y)
+    return
+  }
+
+  addPaletteNode(item)
 }
 
 function resetDefaultScene() {
@@ -402,6 +542,7 @@ onMounted(() => {
       },
     },
   })
+  lf.setDefaultEdgeType('polyline')
 
   const initialScene = normalizeScene(props.initialScene)
   lf.render(cloneScene(initialScene))
@@ -446,21 +587,40 @@ onBeforeUnmount(() => {
 
       <div class="flowchart-editor-body">
         <aside class="flowchart-palette">
-          <button
-            v-for="item in paletteItems"
-            :key="item.key"
-            type="button"
-            class="flowchart-palette-item"
-            :disabled="saving"
-            @click="addNodeByType(item.key)"
-          >
-            <span class="flowchart-shape" :data-shape="item.hint"></span>
-            <span>{{ item.label }}</span>
-          </button>
+          <div class="flowchart-palette-title">节点库（点击或拖拽）</div>
+          <div class="flowchart-palette-sections">
+            <section v-for="group in paletteItemsByGroup" :key="group.key" class="flowchart-palette-group">
+              <h4 class="flowchart-palette-group-title">{{ group.label }}</h4>
+              <div class="flowchart-palette-grid">
+                <button
+                  v-for="item in group.items"
+                  :key="item.key"
+                  type="button"
+                  class="flowchart-palette-item"
+                  :class="{ 'is-dragging': draggingPaletteKey === item.key }"
+                  :draggable="!saving"
+                  :disabled="saving"
+                  @click="addNodeByType(item.key)"
+                  @dragstart="onPaletteDragStart($event, item.key)"
+                  @dragend="onPaletteDragEnd"
+                >
+                  <span class="flowchart-shape" :data-shape="item.hint"></span>
+                  <span class="flowchart-palette-item-label">{{ item.label }}</span>
+                </button>
+              </div>
+            </section>
+          </div>
         </aside>
 
-        <div class="flowchart-canvas-wrap">
+        <div
+          class="flowchart-canvas-wrap"
+          :class="{ 'is-drop-active': canvasDropActive }"
+          @dragover="onCanvasDragOver"
+          @dragleave="onCanvasDragLeave"
+          @drop="onCanvasDrop"
+        >
           <div ref="hostRef" class="flowchart-editor-host"></div>
+          <div v-if="canvasDropActive" class="flowchart-drop-hint">释放鼠标即可插入节点</div>
 
           <div class="flowchart-canvas-toolbar" role="toolbar" aria-label="流程图工具栏">
             <button type="button" class="flowchart-tool-btn" :disabled="saving" @click="zoomIn">放大</button>
@@ -476,7 +636,7 @@ onBeforeUnmount(() => {
           <div class="flowchart-canvas-footer">
             <button type="button" class="flowchart-helper-btn" :disabled="saving" @click="resetDefaultScene">恢复示例</button>
             <button type="button" class="flowchart-helper-btn" :disabled="saving" @click="clearScene">清空画布</button>
-            <span class="flowchart-tools-tip">拖动锚点可连线，双击节点可编辑文字</span>
+            <span class="flowchart-tools-tip">支持拖拽节点入画布，拖动锚点可连线，双击节点可编辑文字</span>
           </div>
         </div>
       </div>
@@ -565,17 +725,45 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: 260px 1fr;
   background: #f1f5fc;
 }
 
 .flowchart-palette {
   border-right: 1px solid #dce5f2;
   background: linear-gradient(180deg, #f9fbff 0%, #f3f7ff 100%);
-  padding: 10px 8px;
+  padding: 10px;
+  overflow: auto;
+}
+
+.flowchart-palette-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #27425e;
+  margin-bottom: 10px;
+}
+
+.flowchart-palette-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.flowchart-palette-group {
   display: grid;
   gap: 8px;
-  align-content: start;
+}
+
+.flowchart-palette-group-title {
+  margin: 0;
+  font-size: 12px;
+  color: #4f6783;
+  font-weight: 700;
+}
+
+.flowchart-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .flowchart-palette-item {
@@ -584,18 +772,34 @@ onBeforeUnmount(() => {
   background: #fff;
   color: #23384f;
   font-size: 12px;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding: 8px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 8px;
   cursor: pointer;
   transition: all 0.18s ease;
+  text-align: left;
 }
 
 .flowchart-palette-item:hover {
   border-color: #98b3d7;
-  box-shadow: 0 8px 16px rgba(22, 52, 90, 0.12);
+  box-shadow: 0 6px 12px rgba(22, 52, 90, 0.12);
   transform: translateY(-1px);
+}
+
+.flowchart-palette-item.is-dragging {
+  border-color: #2e73ff;
+  box-shadow: 0 0 0 2px rgba(46, 115, 255, 0.2);
+}
+
+.flowchart-palette-item-label {
+  min-width: 0;
+  font-size: 12px;
+  color: #1f3751;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .flowchart-shape {
@@ -604,6 +808,11 @@ onBeforeUnmount(() => {
   border: 2px solid #6f8fb6;
   display: inline-block;
   background: #ffffff;
+  flex-shrink: 0;
+}
+
+.flowchart-shape[data-shape='round'] {
+  border-radius: 8px;
 }
 
 .flowchart-shape[data-shape='circle'] {
@@ -620,15 +829,97 @@ onBeforeUnmount(() => {
   border-color: #7d96dd;
 }
 
+.flowchart-shape[data-shape='ellipse'] {
+  width: 26px;
+  height: 18px;
+  border-radius: 50% / 45%;
+  border-color: #6f9bc4;
+}
+
+.flowchart-shape[data-shape='text'] {
+  border: 0;
+  width: 24px;
+  height: 20px;
+  position: relative;
+}
+
+.flowchart-shape[data-shape='text']::before {
+  content: 'T';
+  position: absolute;
+  inset: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #577296;
+  display: grid;
+  place-items: center;
+}
+
+.flowchart-shape[data-shape='task'] {
+  border-radius: 7px;
+  width: 24px;
+  height: 16px;
+  box-shadow: inset 0 0 0 1px rgba(85, 109, 136, 0.5);
+}
+
+.flowchart-shape[data-shape='gateway'] {
+  width: 18px;
+  height: 18px;
+  transform: rotate(45deg);
+  border-color: #4f74c6;
+  box-shadow: inset 0 0 0 1px rgba(79, 116, 198, 0.25);
+}
+
+.flowchart-shape[data-shape='event'] {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border-color: #6e8ec0;
+  box-shadow: inset 0 0 0 2px rgba(110, 142, 192, 0.2);
+}
+
+.flowchart-shape[data-shape='comment'] {
+  width: 22px;
+  height: 16px;
+  border-radius: 4px;
+  border-color: #6f8fb6;
+  border-left-width: 4px;
+}
+
 .flowchart-canvas-wrap {
   position: relative;
   min-width: 0;
   min-height: 0;
 }
 
+.flowchart-canvas-wrap.is-drop-active::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 2px dashed rgba(61, 120, 219, 0.42);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 24;
+}
+
 .flowchart-editor-host {
   width: 100%;
   height: 100%;
+}
+
+.flowchart-drop-hint {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  z-index: 26;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #9fbce4;
+  background: rgba(255, 255, 255, 0.96);
+  color: #2f5d95;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
 }
 
 .flowchart-canvas-toolbar {
