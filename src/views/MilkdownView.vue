@@ -211,8 +211,7 @@ const paletteVisible = ref(false)
 const paletteQuery = ref('')
 const paletteIndex = ref(0)
 const markdownPaneVisible = ref(false)
-const commentsCollapsed = ref(false)
-const historyCollapsed = ref(false)
+const sidePanelTab = ref<'comments' | 'history'>('comments')
 const commentDraft = ref('')
 const snapshotLabel = ref('')
 const comments = ref<EditorComment[]>([])
@@ -2064,31 +2063,65 @@ onBeforeUnmount(() => {
       </section>
 
       <aside class="play-side-panels editorial-side-panels">
-        <CommentPanel
-          ref="commentPanelRef"
-          :comments="comments"
-          :active-comment-id="activeCommentId"
-          :comments-collapsed="commentsCollapsed"
-          :selected-quote="selectedRange?.quote ?? ''"
-          :has-selected-range="Boolean(selectedRange)"
-          v-model:comment-draft="commentDraft"
-          @toggle-collapse="commentsCollapsed = !commentsCollapsed"
-          @submit-comment="submitComment"
-          @focus-comment="focusComment"
-          @delete-comment="deleteComment"
-        />
+        <section class="panel side-tabs-shell">
+          <header class="side-tabs-head">
+            <nav class="side-tabs-nav" aria-label="Right panel tabs">
+              <button
+                type="button"
+                class="side-tab-btn"
+                :class="{ active: sidePanelTab === 'comments' }"
+                @click="sidePanelTab = 'comments'"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
+                <span>评论</span>
+                <span class="side-tab-count">{{ comments.length }}</span>
+              </button>
 
-        <HistoryPanel
-          :snapshots="snapshots"
-          :active-snapshot-id="activeSnapshotId"
-          :history-collapsed="historyCollapsed"
-          v-model:snapshot-label="snapshotLabel"
-          @toggle-collapse="historyCollapsed = !historyCollapsed"
-          @create-snapshot="createHistorySnapshot"
-          @select-snapshot="void selectHistorySnapshot($event)"
-          @restore-snapshot="void restoreHistorySnapshot($event)"
-          @delete-snapshot="deleteHistorySnapshot"
-        />
+              <button
+                type="button"
+                class="side-tab-btn"
+                :class="{ active: sidePanelTab === 'history' }"
+                @click="sidePanelTab = 'history'"
+              >
+                <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                <span>历史</span>
+                <span class="side-tab-count">{{ snapshots.length }}</span>
+              </button>
+            </nav>
+
+            <span v-if="sidePanelTab === 'comments'" class="side-tabs-extra">ALL RESOLVED</span>
+          </header>
+
+          <div class="side-tabs-body">
+            <CommentPanel
+              v-show="sidePanelTab === 'comments'"
+              ref="commentPanelRef"
+              :comments="comments"
+              :active-comment-id="activeCommentId"
+              :comments-collapsed="false"
+              :selected-quote="selectedRange?.quote ?? ''"
+              :has-selected-range="Boolean(selectedRange)"
+              v-model:comment-draft="commentDraft"
+              @toggle-collapse="void 0"
+              @submit-comment="submitComment"
+              @focus-comment="focusComment"
+              @delete-comment="deleteComment"
+            />
+
+            <HistoryPanel
+              v-show="sidePanelTab === 'history'"
+              :snapshots="snapshots"
+              :active-snapshot-id="activeSnapshotId"
+              :history-collapsed="false"
+              v-model:snapshot-label="snapshotLabel"
+              @toggle-collapse="void 0"
+              @create-snapshot="createHistorySnapshot"
+              @select-snapshot="void selectHistorySnapshot($event)"
+              @restore-snapshot="void restoreHistorySnapshot($event)"
+              @delete-snapshot="deleteHistorySnapshot"
+            />
+          </div>
+        </section>
       </aside>
 
       <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown editorial-pane">
@@ -2185,6 +2218,10 @@ onBeforeUnmount(() => {
     @save="saveMindmap"
   />
 </template>
+
+
+
+
 
 
 
