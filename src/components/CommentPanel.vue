@@ -31,7 +31,9 @@ const hasActiveComment = computed(() =>
 
 const commentCountLabel = computed(() => `${props.comments.length} 条评论`)
 
-const selectedQuotePreview = computed(() => props.selectedQuote || '先在正文选中一段文本')
+const selectedQuotePreview = computed(() =>
+  props.selectedQuote || '先在正文中选中一段文本，再填写评论。'
+)
 
 const canSubmitComment = computed(() => Boolean(props.hasSelectedRange && props.commentDraft.trim()))
 
@@ -58,6 +60,7 @@ function setCommentItemRef(id: string, element: unknown) {
     commentItemRefs.set(id, element)
     return
   }
+
   commentItemRefs.delete(id)
 }
 
@@ -100,15 +103,17 @@ defineExpose({
 </script>
 
 <template>
-  <section class="panel comments-panel">
-    <div class="comments-panel-head">
-      <div>
+  <section class="panel comments-panel drawer-panel">
+    <div class="comments-panel-head panel-shell-head">
+      <div class="panel-title-block">
+        <p class="panel-kicker">COMMENT</p>
         <h3>评论</h3>
         <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
       </div>
+
       <div class="panel-head-actions">
         <span class="comments-badge" :data-active="hasActiveComment">
-          {{ hasActiveComment ? '已定位' : '未选中' }}
+          {{ hasActiveComment ? '当前锚点' : '未定位' }}
         </span>
         <button
           type="button"
@@ -121,7 +126,7 @@ defineExpose({
       </div>
     </div>
 
-    <div v-show="!commentsCollapsed" class="panel-section-body">
+    <div v-show="!commentsCollapsed" class="panel-section-body drawer-body">
       <blockquote class="selection-quote" :class="{ empty: !hasSelectedRange }">
         {{ selectedQuotePreview }}
       </blockquote>
@@ -131,7 +136,7 @@ defineExpose({
         v-model="commentDraftModel"
         class="comment-input"
         rows="4"
-        placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
+        placeholder="例如：这里需要补充数据来源、结论依据，或者给出更明确的解释。"
       ></textarea>
 
       <div class="row-actions comment-actions">
@@ -164,12 +169,11 @@ defineExpose({
               </div>
             </div>
           </div>
+
           <p class="comment-text">{{ item.text }}</p>
-          <p class="panel-item-quote">“{{ item.quote }}”</p>
+          <p class="panel-item-quote">引用：{{ item.quote }}</p>
+
           <div class="row-actions comment-link-actions">
-            <button type="button" class="btn xs ghost link-btn" @click.stop="emit('focus-comment', item)">
-              Resolve
-            </button>
             <button type="button" class="btn xs ghost link-btn" @click.stop="emit('focus-comment', item)">
               定位
             </button>
@@ -183,8 +187,9 @@ defineExpose({
           </div>
         </li>
       </ul>
+
       <p v-else class="panel-tip comments-empty">
-        还没有评论。先在左侧选中一段文本，再输入评论内容。
+        还没有评论。先在正文里选中一段文本，再输入评论内容。
       </p>
     </div>
   </section>

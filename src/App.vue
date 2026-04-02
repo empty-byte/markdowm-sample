@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import './styles/pixel-left.css'
 import './styles/pixel-body.css'
+
+const isStrategyExpanded = ref(true)
+
+const toggleStrategy = () => {
+  isStrategyExpanded.value = !isStrategyExpanded.value
+}
 </script>
 
 <template>
@@ -61,49 +68,91 @@ import './styles/pixel-body.css'
         <span>New Document</span>
       </button>
 
-      <section class="sidebar-group">
-        <h3>Workspace</h3>
-        <div class="tree-folder">
-          <button type="button" class="tree-item tree-row folder-row">
-            <span class="material-symbols-outlined tree-icon">expand_more</span>
-            <span class="material-symbols-outlined tree-icon">folder_open</span>
-            <span>Strategy</span>
-          </button>
-          <div class="tree-children">
-            <button type="button" class="tree-item tree-row active">
-              <span class="material-symbols-outlined tree-icon">description</span>
-              <span>Q4 Content Strategy</span>
+      <div class="workspace-sidebar-scroll">
+        <section class="sidebar-group">
+          <h3>Workspace</h3>
+          <div class="tree-folder">
+            <button
+              type="button"
+              class="tree-item tree-row folder-row"
+              :aria-expanded="isStrategyExpanded"
+              aria-controls="workspace-strategy-children"
+              @click="toggleStrategy"
+            >
+              <span
+                class="material-symbols-outlined tree-icon folder-toggle-icon"
+                aria-hidden="true"
+              >
+                {{ isStrategyExpanded ? 'expand_more' : 'chevron_right' }}
+              </span>
+              <span
+                class="material-symbols-outlined tree-icon"
+                aria-hidden="true"
+              >
+                {{ isStrategyExpanded ? 'folder_open' : 'folder' }}
+              </span>
+              <span>Strategy</span>
             </button>
-            <button type="button" class="tree-item tree-row">
-              <span class="material-symbols-outlined tree-icon">description</span>
-              <span>2025 Roadmap</span>
-            </button>
+            <div
+              v-show="isStrategyExpanded"
+              id="workspace-strategy-children"
+              class="tree-children"
+            >
+              <button type="button" class="tree-item tree-row active">
+                <span class="material-symbols-outlined tree-icon">description</span>
+                <span>Q4 Content Strategy</span>
+              </button>
+              <button type="button" class="tree-item tree-row">
+                <span class="material-symbols-outlined tree-icon">description</span>
+                <span>2025 Roadmap</span>
+              </button>
+            </div>
           </div>
-        </div>
-        <button type="button" class="tree-item tree-row">
-          <span class="material-symbols-outlined tree-icon">description</span>
-          <span>Global Campaign</span>
-        </button>
-      </section>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">description</span>
+            <span>Global Campaign</span>
+          </button>
+        </section>
 
-      <section class="sidebar-group">
-        <h3>Resources</h3>
-        <button type="button" class="tree-item tree-row">
-          <span class="material-symbols-outlined tree-icon">chevron_right</span>
-          <span class="material-symbols-outlined tree-icon">folder</span>
-          <span>Research</span>
-        </button>
-        <button type="button" class="tree-item tree-row">
-          <span class="material-symbols-outlined tree-icon">chevron_right</span>
-          <span class="material-symbols-outlined tree-icon">folder_shared</span>
-          <span>Shared</span>
-        </button>
-        <button type="button" class="tree-item tree-row">
-          <span class="material-symbols-outlined tree-icon">chevron_right</span>
-          <span class="material-symbols-outlined tree-icon">folder</span>
-          <span>Archive</span>
-        </button>
-      </section>
+        <section class="sidebar-group">
+          <h3>Resources</h3>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Research</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder_shared</span>
+            <span>Shared</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Archive</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Brand System</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Launch Calendar</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Meeting Notes</span>
+          </button>
+          <button type="button" class="tree-item tree-row">
+            <span class="material-symbols-outlined tree-icon">chevron_right</span>
+            <span class="material-symbols-outlined tree-icon">folder</span>
+            <span>Draft Archive</span>
+          </button>
+        </section>
+      </div>
 
       <section class="sidebar-footer">
         <button type="button" class="tree-item tree-row footer-item">
@@ -129,6 +178,11 @@ import './styles/pixel-body.css'
         <a href="javascript:void(0)" class="outline-link">2. Core Methodology</a>
         <a href="javascript:void(0)" class="outline-link sub">2.1 Content Pillars</a>
         <a href="javascript:void(0)" class="outline-link">3. Distribution Channels</a>
+        <a href="javascript:void(0)" class="outline-link sub">3.1 Partner Channels</a>
+        <a href="javascript:void(0)" class="outline-link sub">3.2 Social Distribution</a>
+        <a href="javascript:void(0)" class="outline-link">4. Execution Timeline</a>
+        <a href="javascript:void(0)" class="outline-link sub">4.1 Milestones</a>
+        <a href="javascript:void(0)" class="outline-link sub">4.2 Owners</a>
       </nav>
     </aside>
 

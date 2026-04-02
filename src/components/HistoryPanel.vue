@@ -85,15 +85,17 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
 </script>
 
 <template>
-  <section class="panel history-panel">
-    <div class="history-panel-head">
-      <div>
-        <h3>历史记录</h3>
-        <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片即可还原左侧文档</p>
+  <section class="panel history-panel drawer-panel">
+    <div class="history-panel-head panel-shell-head">
+      <div class="panel-title-block">
+        <p class="panel-kicker">HISTORY</p>
+        <h3>历史</h3>
+        <p class="panel-tip">{{ snapshotCountLabel }} · 点击卡片即可还原当前文档</p>
       </div>
+
       <div class="panel-head-actions">
         <span class="history-badge" :data-active="hasActiveSnapshot">
-          {{ hasActiveSnapshot ? '当前版本' : '未选中' }}
+          {{ hasActiveSnapshot ? '当前版本' : '未定位' }}
         </span>
         <button
           type="button"
@@ -106,18 +108,18 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
       </div>
     </div>
 
-    <div v-show="!historyCollapsed" class="panel-section-body">
+    <div v-show="!historyCollapsed" class="panel-section-body drawer-body">
       <input
         v-model="snapshotLabelModel"
         class="mini-input"
         type="text"
-        placeholder="例如：补充结论前 / 发布前检查"
+        placeholder="例如：发布前 / 评审前 / 里程碑快照"
         @keydown.enter.prevent="emit('create-snapshot')"
       />
 
       <div class="row-actions history-actions">
         <button type="button" class="btn" @click="emit('create-snapshot')">创建快照</button>
-        <span class="panel-tip">默认会保存当前文档和评论状态</span>
+        <span class="panel-tip">会保存当前正文和评论状态。</span>
       </div>
 
       <ul v-if="snapshots.length" class="panel-list history-list">
@@ -148,8 +150,9 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
           </div>
         </li>
       </ul>
+
       <p v-else class="panel-tip comments-empty">
-        还没有历史记录。手动创建一个快照后，就可以随时把文档还原到对应版本。
+        还没有历史记录。手动创建一个快照后，就能随时回到对应版本。
       </p>
     </div>
   </section>

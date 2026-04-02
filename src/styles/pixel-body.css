@@ -11,7 +11,7 @@
 .play-pane-editor,
 .play-pane-markdown,
 .tip {
-  width: min(980px, calc(100% - 24px));
+  width: min(896px, calc(100% - 24px));
   margin-left: auto;
   margin-right: 336px;
 }
@@ -22,35 +22,76 @@
 }
 
 .editor-last-modified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #8d98ad;
+  font-family: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  line-height: 1;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.editor-last-modified .material-symbols-outlined {
+  font-size: 14px;
+  color: #95a1b5;
+}
+
 .editor-title {
-  margin: 10px 0 18px;
+  margin: 12px 0 20px;
   font-family: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: clamp(42px, 4vw, 68px);
-  line-height: 1.08;
+  font-size: clamp(40px, 4vw, 48px);
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #171f2e;
+  color: #181f2c;
 }
 
 .editor-title span {
+  display: block;
   color: #1555d8;
 }
 
 .editor-collab-row {
-  min-width: min(720px, 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid rgba(182, 191, 208, 0.42);
+  border-bottom: 1px solid rgba(182, 191, 208, 0.42);
   padding: 10px 0;
+  min-width: min(720px, 100%);
+}
+
+.editor-collab-avatars {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 2px;
+}
+
+.editor-collab-avatar {
+  margin-left: -6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: color-mix(in srgb, var(--avatar-color, #6790df) 20%, #d7e3ff);
+  color: #1f3b63;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 1px 0 rgba(36, 57, 102, 0.05);
+}
+
+.editor-collab-avatar.count {
+  background: #eef3fb;
+  color: #637088;
 }
 
 .editor-collab-text {
-  font-size: 15px;
-  color: #56627a;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #5c6880;
 }
 
 .floating-markdown-toolbar {
@@ -103,20 +144,20 @@
 }
 
 .playground-host .milkdown .editor {
-  padding: 26px 0 42px;
+  padding: 24px 0 40px;
 }
 
 .playground-host .milkdown .ProseMirror {
-  width: min(960px, calc(100% - 72px));
+  width: min(896px, calc(100% - 64px));
   margin: 0 auto;
-  padding: 56px 62px 72px;
+  padding: 48px 48px 64px;
   border-radius: 22px;
   background: #fff;
   box-shadow: 0 1px 0 rgba(219, 224, 236, 0.92);
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 16px;
-  line-height: 1.72;
-  color: #3f4a5e;
+  font-size: 18px;
+  line-height: 1.625;
+  color: #435065;
 }
 
 .playground-host .milkdown .ProseMirror h1,
@@ -125,35 +166,84 @@
 .playground-host .milkdown .ProseMirror h4 {
   font-family: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   letter-spacing: -0.02em;
-  color: #171f2e;
+  color: #181f2c;
 }
 
 .playground-host .milkdown .ProseMirror h1 {
-  margin: 0 0 20px;
+  margin: 0 0 32px;
   font-size: 48px;
-  line-height: 1.08;
-  font-weight: 800;
-}
-
-.playground-host .milkdown .ProseMirror h2 {
-  margin: 12px 0 18px;
-  font-size: 42px;
   line-height: 1.1;
   font-weight: 800;
 }
 
+.playground-host .milkdown .ProseMirror h2 {
+  margin: 0 0 24px;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
 .playground-host .milkdown .ProseMirror h3 {
-  margin: 38px 0 16px;
+  margin: 40px 0 16px;
   font-size: 24px;
-  line-height: 1.24;
-  font-weight: 800;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .playground-host .milkdown .ProseMirror p,
 .playground-host .milkdown .ProseMirror li {
-  font-size: 16px;
-  line-height: 1.72;
-  color: #3f4a5e;
+  font-size: 18px;
+  line-height: 1.625;
+  color: #435065;
+}
+
+.playground-host .milkdown .ProseMirror p {
+  margin: 0 0 24px;
+}
+
+.playground-host .milkdown .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.playground-host .milkdown .ProseMirror ul,
+.playground-host .milkdown .ProseMirror ol {
+  margin: 0 0 32px;
+  padding-left: 1.5em;
+}
+
+.playground-host .milkdown .ProseMirror ul > li,
+.playground-host .milkdown .ProseMirror ol > li {
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.playground-host .milkdown .ProseMirror ul > li:last-child,
+.playground-host .milkdown .ProseMirror ol > li:last-child {
+  margin-bottom: 0;
+}
+
+.playground-host .milkdown .ProseMirror li > p {
+  margin: 0;
+}
+
+.playground-host .milkdown .ProseMirror blockquote {
+  margin: 40px 0;
+  padding: 8px 0 8px 24px;
+  border-left: 4px solid #2e64e6;
+  border-radius: 0 16px 16px 0;
+  background: linear-gradient(90deg, rgba(232, 239, 255, 0.6), rgba(255, 255, 255, 0));
+  color: #4b5568;
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.55;
+}
+
+.playground-host .milkdown .ProseMirror blockquote > *:first-child {
+  margin-top: 0;
+}
+
+.playground-host .milkdown .ProseMirror blockquote > *:last-child {
+  margin-bottom: 0;
 }
 
 .playground-host .milkdown .ProseMirror a {
@@ -178,7 +268,7 @@
   .play-pane-editor,
   .play-pane-markdown,
   .tip {
-    width: min(980px, calc(100% - 24px));
+    width: min(896px, calc(100% - 24px));
     margin-right: auto;
   }
 }

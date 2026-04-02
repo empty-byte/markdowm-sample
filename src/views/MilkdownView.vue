@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { editorViewCtx } from '@milkdown/core'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
@@ -212,6 +212,7 @@ const paletteQuery = ref('')
 const paletteIndex = ref(0)
 const markdownPaneVisible = ref(false)
 const sidePanelTab = ref<'comments' | 'history'>('comments')
+const sidePanelOpen = ref(false)
 const commentDraft = ref('')
 const snapshotLabel = ref('')
 const comments = ref<EditorComment[]>([])
@@ -497,6 +498,30 @@ const collaboratorCountLabel = computed(() => {
 })
 
 /**
+ * Handle openSidePanel logic.
+ * @param tab - Parameter.
+ */
+function openSidePanel(tab: 'comments' | 'history') {
+  // Keep the drawer on the requested tab and make it visible.
+  sidePanelTab.value = tab
+  sidePanelOpen.value = true
+}
+
+/**
+ * Handle toggleSidePanel logic.
+ * @param tab - Parameter.
+ */
+function toggleSidePanel(tab: 'comments' | 'history') {
+  // Clicking the active tab collapses the drawer; otherwise it opens the target tab.
+  if (sidePanelOpen.value && sidePanelTab.value === tab) {
+    sidePanelOpen.value = false
+    return
+  }
+
+  openSidePanel(tab)
+}
+
+/**
  * Handle getFeatureFlags logic.
  */
 function getFeatureFlags() {
@@ -752,6 +777,8 @@ function activateCommentById(id: string) {
   const comment = comments.value.find((item) => item.id === id)
   if (!comment) return
 
+  openSidePanel('comments')
+
   activeCommentId.value = comment.id
   updateActiveCommentRange()
 
@@ -837,6 +864,8 @@ function submitComment() {
   // Validate draft + selection, append comment, then focus newly created item.
   if (!selectedRange.value) return
 
+  openSidePanel('comments')
+
   const text = commentDraft.value.trim()
   if (!text) return
 
@@ -861,6 +890,8 @@ function beginCommentFromSelection() {
   syncSelectionState()
   if (!selectedRange.value) return
 
+
+  openSidePanel('comments')
   activeCommentId.value = null
   activeCommentRange.value = {
     from: selectedRange.value.from,
@@ -1970,7 +2001,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="page milk-playground-page">
+  <section class="page milk-playground-page" :class="{ 'side-drawer-open': sidePanelOpen, 'side-drawer-closed': !sidePanelOpen }">
     <header class="editor-hero">
       <div class="editor-last-modified">
         <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
@@ -2062,7 +2093,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <aside class="play-side-panels editorial-side-panels">
+      <aside class="play-side-panels editorial-side-panels" :class="{ 'is-open': sidePanelOpen, 'is-collapsed': !sidePanelOpen, 'is-comments': sidePanelTab === 'comments', 'is-history': sidePanelTab === 'history' }">
         <section class="panel side-tabs-shell">
           <header class="side-tabs-head">
             <nav class="side-tabs-nav" aria-label="Right panel tabs">
@@ -2070,10 +2101,11 @@ onBeforeUnmount(() => {
                 type="button"
                 class="side-tab-btn"
                 :class="{ active: sidePanelTab === 'comments' }"
-                @click="sidePanelTab = 'comments'"
+                :aria-expanded="sidePanelOpen && sidePanelTab === 'comments'"
+                @click="toggleSidePanel('comments')"
               >
                 <span class="material-symbols-outlined" aria-hidden="true">chat_bubble</span>
-                <span>评论</span>
+                <span class="side-tab-label">评论</span>
                 <span class="side-tab-count">{{ comments.length }}</span>
               </button>
 
@@ -2081,40 +2113,41 @@ onBeforeUnmount(() => {
                 type="button"
                 class="side-tab-btn"
                 :class="{ active: sidePanelTab === 'history' }"
-                @click="sidePanelTab = 'history'"
+                :aria-expanded="sidePanelOpen && sidePanelTab === 'history'"
+                @click="toggleSidePanel('history')"
               >
                 <span class="material-symbols-outlined" aria-hidden="true">history</span>
-                <span>历史</span>
+                <span class="side-tab-label">历史</span>
                 <span class="side-tab-count">{{ snapshots.length }}</span>
               </button>
             </nav>
 
-            <span v-if="sidePanelTab === 'comments'" class="side-tabs-extra">ALL RESOLVED</span>
+            <span v-if="sidePanelOpen && sidePanelTab === 'comments'" class="side-tabs-extra">ALL RESOLVED</span>
           </header>
 
           <div class="side-tabs-body">
             <CommentPanel
-              v-show="sidePanelTab === 'comments'"
+              v-show="sidePanelOpen && sidePanelTab === 'comments'"
               ref="commentPanelRef"
               :comments="comments"
               :active-comment-id="activeCommentId"
-              :comments-collapsed="false"
+              :comments-collapsed="!sidePanelOpen || sidePanelTab !== 'comments'"
               :selected-quote="selectedRange?.quote ?? ''"
               :has-selected-range="Boolean(selectedRange)"
               v-model:comment-draft="commentDraft"
-              @toggle-collapse="void 0"
+              @toggle-collapse="sidePanelOpen = false"
               @submit-comment="submitComment"
               @focus-comment="focusComment"
               @delete-comment="deleteComment"
             />
 
             <HistoryPanel
-              v-show="sidePanelTab === 'history'"
+              v-show="sidePanelOpen && sidePanelTab === 'history'"
               :snapshots="snapshots"
               :active-snapshot-id="activeSnapshotId"
-              :history-collapsed="false"
+              :history-collapsed="!sidePanelOpen || sidePanelTab !== 'history'"
               v-model:snapshot-label="snapshotLabel"
-              @toggle-collapse="void 0"
+              @toggle-collapse="sidePanelOpen = false"
               @create-snapshot="createHistorySnapshot"
               @select-snapshot="void selectHistorySnapshot($event)"
               @restore-snapshot="void restoreHistorySnapshot($event)"
