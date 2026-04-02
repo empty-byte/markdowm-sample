@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { HistorySnapshot } from '../features/editor-enhance/history'
+import '../styles/pixel-right.css'
 
 const props = defineProps<{
   snapshots: HistorySnapshot[]

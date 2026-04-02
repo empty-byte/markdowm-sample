@@ -1,0 +1,204 @@
+﻿/* Main content pixel alignment against code.html */
+
+.milk-playground-page {
+  width: 100%;
+  max-width: none;
+  padding: 0 24px 16px;
+}
+
+.editor-hero,
+.floating-markdown-toolbar,
+.play-pane-editor,
+.play-pane-markdown,
+.tip {
+  width: min(980px, calc(100% - 24px));
+  margin-left: auto;
+  margin-right: 336px;
+}
+
+.editor-hero {
+  margin-top: 0;
+  margin-bottom: 22px;
+}
+
+.editor-last-modified {
+  color: #8d98ad;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.editor-title {
+  margin: 10px 0 18px;
+  font-family: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: clamp(42px, 4vw, 68px);
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #171f2e;
+}
+
+.editor-title span {
+  color: #1555d8;
+}
+
+.editor-collab-row {
+  min-width: min(720px, 100%);
+  padding: 10px 0;
+}
+
+.editor-collab-text {
+  font-size: 15px;
+  color: #56627a;
+}
+
+.floating-markdown-toolbar {
+  margin-top: 0;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(208, 218, 235, 0.86);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 32px -4px rgba(24, 28, 34, 0.06);
+}
+
+.play-pane-editor {
+  border: 1px solid #dfe5f0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.play-pane-head {
+  height: 52px;
+  padding: 0 16px;
+  background: #f8faff;
+  border-bottom: 1px solid #dfe5f0;
+}
+
+.play-pane-head h3 {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: #172945;
+}
+
+.play-pane-head span {
+  color: #8a96aa;
+  font-size: 12px;
+}
+
+.play-editor-shell,
+.playground-host,
+.markdown-pane {
+  min-height: 760px;
+  background: #fff;
+}
+
+.playground-host .milkdown {
+  background: #fff;
+  --crepe-font-title: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --crepe-font-default: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.playground-host .milkdown .editor {
+  padding: 26px 0 42px;
+}
+
+.playground-host .milkdown .ProseMirror {
+  width: min(960px, calc(100% - 72px));
+  margin: 0 auto;
+  padding: 56px 62px 72px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(219, 224, 236, 0.92);
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 16px;
+  line-height: 1.72;
+  color: #3f4a5e;
+}
+
+.playground-host .milkdown .ProseMirror h1,
+.playground-host .milkdown .ProseMirror h2,
+.playground-host .milkdown .ProseMirror h3,
+.playground-host .milkdown .ProseMirror h4 {
+  font-family: 'Plus Jakarta Sans', 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  letter-spacing: -0.02em;
+  color: #171f2e;
+}
+
+.playground-host .milkdown .ProseMirror h1 {
+  margin: 0 0 20px;
+  font-size: 48px;
+  line-height: 1.08;
+  font-weight: 800;
+}
+
+.playground-host .milkdown .ProseMirror h2 {
+  margin: 12px 0 18px;
+  font-size: 42px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.playground-host .milkdown .ProseMirror h3 {
+  margin: 38px 0 16px;
+  font-size: 24px;
+  line-height: 1.24;
+  font-weight: 800;
+}
+
+.playground-host .milkdown .ProseMirror p,
+.playground-host .milkdown .ProseMirror li {
+  font-size: 16px;
+  line-height: 1.72;
+  color: #3f4a5e;
+}
+
+.playground-host .milkdown .ProseMirror a {
+  color: #2d64e5;
+}
+
+.playground-host .milkdown .ProseMirror strong {
+  color: #202a3c;
+}
+
+.playground-host .milkdown .ProseMirror > h1:first-child {
+  display: none;
+}
+
+.tip {
+  margin-top: 12px;
+}
+
+@media (max-width: 1560px) {
+  .editor-hero,
+  .floating-markdown-toolbar,
+  .play-pane-editor,
+  .play-pane-markdown,
+  .tip {
+    width: min(980px, calc(100% - 24px));
+    margin-right: auto;
+  }
+}
+
+@media (max-width: 980px) {
+  .milk-playground-page {
+    padding: 0 12px 12px;
+  }
+
+  .editor-hero,
+  .floating-markdown-toolbar,
+  .play-pane-editor,
+  .play-pane-markdown,
+  .tip {
+    width: calc(100% - 2px);
+  }
+
+  .playground-host .milkdown .ProseMirror {
+    width: calc(100% - 24px);
+    padding: 24px 16px 30px;
+    border-radius: 14px;
+  }
+}

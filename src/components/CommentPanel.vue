@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { EditorComment } from '../features/editor-enhance/comments'
+import '../styles/pixel-right.css'
 
 const props = defineProps<{
   comments: EditorComment[]
@@ -154,15 +155,29 @@ defineExpose({
           :class="{ active: item.id === activeCommentId }"
           @click="emit('focus-comment', item)"
         >
-          <div class="panel-item-head">
-            <strong>{{ item.author }}</strong>
-            <span>{{ formatTime(item.createdAt) }}</span>
+          <div class="panel-item-head comment-card-top">
+            <div class="comment-author-block">
+              <span class="comment-avatar">{{ item.author.slice(0, 1).toUpperCase() }}</span>
+              <div class="comment-author-meta">
+                <strong>{{ item.author }}</strong>
+                <span>{{ formatTime(item.createdAt) }}</span>
+              </div>
+            </div>
           </div>
           <p class="comment-text">{{ item.text }}</p>
           <p class="panel-item-quote">“{{ item.quote }}”</p>
-          <div class="row-actions">
-            <button type="button" class="btn xs" @click.stop="emit('focus-comment', item)">定位</button>
-            <button type="button" class="btn xs ghost" @click.stop="emit('delete-comment', item.id)">
+          <div class="row-actions comment-link-actions">
+            <button type="button" class="btn xs ghost link-btn" @click.stop="emit('focus-comment', item)">
+              Resolve
+            </button>
+            <button type="button" class="btn xs ghost link-btn" @click.stop="emit('focus-comment', item)">
+              定位
+            </button>
+            <button
+              type="button"
+              class="btn xs ghost link-btn danger"
+              @click.stop="emit('delete-comment', item.id)"
+            >
               删除
             </button>
           </div>

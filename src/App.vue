@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
+import './styles/pixel-left.css'
+import './styles/pixel-body.css'
 </script>
 
 <template>
