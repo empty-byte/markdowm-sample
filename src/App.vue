@@ -5,6 +5,11 @@ import './styles/pixel-left.css'
 import './styles/pixel-body.css'
 
 const isStrategyExpanded = ref(true)
+const HISTORY_MODAL_OPEN_EVENT = 'open-history-modal'
+
+function openHistoryModal() {
+  window.dispatchEvent(new CustomEvent(HISTORY_MODAL_OPEN_EVENT))
+}
 
 const toggleStrategy = () => {
   isStrategyExpanded.value = !isStrategyExpanded.value
@@ -38,7 +43,7 @@ const toggleStrategy = () => {
       </div>
 
       <div class="topbar-actions">
-        <button type="button" class="icon-btn" aria-label="History">
+        <button type="button" class="icon-btn" aria-label="History" @click="openHistoryModal">
           <span class="material-symbols-outlined">history</span>
         </button>
         <button type="button" class="icon-btn" aria-label="Favorite">
@@ -193,3 +198,4 @@ const toggleStrategy = () => {
     </main>
   </div>
 </template>
+

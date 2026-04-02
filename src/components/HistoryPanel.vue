@@ -25,19 +25,12 @@ const snapshotLabelModel = computed({
 })
 
 const hasActiveSnapshot = computed(() =>
-  Boolean(
-    props.activeSnapshotId && props.snapshots.some((item) => item.id === props.activeSnapshotId)
-  )
+  Boolean(props.activeSnapshotId && props.snapshots.some((item) => item.id === props.activeSnapshotId))
 )
 
 const snapshotCountLabel = computed(() => `${props.snapshots.length} 条历史记录`)
 
-/**
- * Handle formatTime logic.
- * @param time - Parameter.
- */
 function formatTime(time: number) {
-  // Unified short timestamp format used in snapshot cards.
   return new Date(time).toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',
@@ -46,29 +39,18 @@ function formatTime(time: number) {
   })
 }
 
-/**
- * Handle parseSnapshotMarkdown logic.
- * @param content - Parameter.
- * @returns Return value.
- */
 function parseSnapshotMarkdown(content: string): string {
-  // New snapshots store JSON payload; old snapshots might be plain markdown string.
   try {
     const parsed = JSON.parse(content) as { markdown?: unknown }
     if (typeof parsed.markdown === 'string') return parsed.markdown
   } catch {
-    // Backward compatibility: treat old snapshot content as raw markdown only.
+    // Keep backward compatibility with older plain-markdown snapshots.
   }
 
   return content
 }
 
-/**
- * Handle getSnapshotPreview logic.
- * @param snapshot - Parameter.
- */
 function getSnapshotPreview(snapshot: HistorySnapshot) {
-  // Render compact preview as "first line / last line" for quick scanning.
   const snapshotMarkdown = parseSnapshotMarkdown(snapshot.content)
   const lines = snapshotMarkdown
     .split('\n')
@@ -85,41 +67,36 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
 </script>
 
 <template>
-  <section class="panel history-panel drawer-panel">
+  <section class="panel history-panel drawer-panel modal-panel" :class="{ 'is-collapsed': historyCollapsed }">
     <div class="history-panel-head panel-shell-head">
       <div class="panel-title-block">
         <p class="panel-kicker">HISTORY</p>
-        <h3>历史</h3>
-        <p class="panel-tip">{{ snapshotCountLabel }} · 点击卡片即可还原当前文档</p>
+        <h3>历史记录</h3>
+        <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片可还原</p>
       </div>
 
       <div class="panel-head-actions">
         <span class="history-badge" :data-active="hasActiveSnapshot">
-          {{ hasActiveSnapshot ? '当前版本' : '未定位' }}
+          {{ hasActiveSnapshot ? '当前版本' : '未选中' }}
         </span>
-        <button
-          type="button"
-          class="panel-toggle"
-          :aria-expanded="!historyCollapsed"
-          @click="emit('toggle-collapse')"
-        >
-          {{ historyCollapsed ? '展开' : '收起' }}
+        <button type="button" class="panel-toggle history-close" aria-label="关闭历史弹框" @click="emit('toggle-collapse')">
+          关闭
         </button>
       </div>
     </div>
 
-    <div v-show="!historyCollapsed" class="panel-section-body drawer-body">
+    <div class="history-panel-body panel-section-body drawer-body">
       <input
         v-model="snapshotLabelModel"
         class="mini-input"
         type="text"
-        placeholder="例如：发布前 / 评审前 / 里程碑快照"
+        placeholder="例如：补充结论前 / 发布前检查"
         @keydown.enter.prevent="emit('create-snapshot')"
       />
 
       <div class="row-actions history-actions">
         <button type="button" class="btn" @click="emit('create-snapshot')">创建快照</button>
-        <span class="panel-tip">会保存当前正文和评论状态。</span>
+        <span class="panel-tip">默认会保存当前文档和评论状态</span>
       </div>
 
       <ul v-if="snapshots.length" class="panel-list history-list">
@@ -152,7 +129,7 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
       </ul>
 
       <p v-else class="panel-tip comments-empty">
-        还没有历史记录。手动创建一个快照后，就能随时回到对应版本。
+        还没有历史记录。手动创建一个快照后，就可以随时把文档还原到对应版本。
       </p>
     </div>
   </section>

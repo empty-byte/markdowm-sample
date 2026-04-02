@@ -2,12 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400&display=swap');
 
 :root {
-  --bg: #f5f7fb;
-  --surface: #ffffff;
-  --text: #1b2430;
-  --muted: #5f6b7a;
-  --line: #dde3ec;
-  --accent: #0f6dff;
+  --bg: var(--ed-color-bg);
+  --surface: var(--ed-color-surface);
+  --text: var(--ed-color-text);
+  --muted: var(--ed-color-text-muted);
+  --line: var(--ed-color-line);
+  --accent: var(--ed-color-primary);
 }
 
 * {
@@ -16,7 +16,7 @@
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--ed-font-sans);
   color: var(--text);
   background: radial-gradient(circle at 0 0, #e9f2ff, transparent 45%), var(--bg);
 }
@@ -885,8 +885,8 @@ code {
   margin: 0;
   padding: 14px 6px;
   border-right: 1px solid var(--line);
-  background: #f7f9fd;
-  color: #8a93a1;
+  background: var(--surface-muted);
+  color: var(--muted);
   text-align: right;
   user-select: none;
   font-size: 12px;
@@ -1397,12 +1397,12 @@ code {
    =============================== */
 
 :root {
-  --bg: #f8f9ff;
-  --surface: #ffffff;
-  --text: #181c22;
-  --muted: #5f6b7a;
-  --line: #dfe2eb;
-  --accent: #0050d6;
+  --bg: var(--ed-color-bg);
+  --surface: var(--ed-color-surface);
+  --text: var(--ed-color-text);
+  --muted: var(--ed-color-text-muted);
+  --line: var(--ed-color-line);
+  --accent: var(--ed-color-primary);
 }
 
 html,
@@ -1413,7 +1413,7 @@ body,
 
 body {
   margin: 0;
-  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--ed-font-sans);
   background: var(--bg);
   color: var(--text);
 }
@@ -1525,14 +1525,14 @@ body {
 }
 
 .tab-btn:hover {
-  color: #2558be;
-  background: rgba(0, 80, 214, 0.08);
+  color: var(--primary-hover);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .tab-btn.active {
-  color: #2561df;
-  border-color: #bed0f8;
-  background: rgba(37, 97, 223, 0.12);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
 }
 
 .topbar-actions {
@@ -1551,15 +1551,15 @@ body {
 
 .topbar .btn.ghost {
   border-color: transparent;
-  background: #eceff6;
-  color: #384256;
+  background: var(--surface-muted);
+  color: var(--text);
 }
 
 .topbar .btn.primary {
-  background: linear-gradient(135deg, #0050d6, #2a6af9);
-  border-color: #1f5fe0;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 84%, #2a6af9));
+  border-color: color-mix(in srgb, var(--primary) 88%, #1f5fe0);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(31, 92, 212, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .icon-btn {
@@ -1617,8 +1617,8 @@ body {
   bottom: 0;
   z-index: 50;
   width: 256px;
-  border-right: 1px solid #e3e7ef;
-  background: #f8f9fc;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
   padding: 80px 16px 14px;
   display: grid;
   align-content: start;
@@ -1761,8 +1761,8 @@ body {
   bottom: 0;
   z-index: 49;
   width: 240px;
-  border-right: 1px solid #e3e7ef;
-  background: #ffffff;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
   padding: 80px 12px 12px;
   display: grid;
   align-content: start;
@@ -1773,7 +1773,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #818ca0;
+  color: var(--muted);
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 800;
@@ -1802,14 +1802,14 @@ body {
 }
 
 .outline-link:hover {
-  color: #2b5cbf;
-  background: rgba(43, 92, 191, 0.08);
+  color: var(--primary-hover);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .outline-link.active {
-  color: #2a65e5;
+  color: var(--primary);
   font-weight: 700;
-  background: rgba(42, 101, 229, 0.1);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .outline-link.sub {
@@ -1957,7 +1957,7 @@ body {
 .floating-divider {
   width: 1px;
   height: 22px;
-  background: #e3e7ef;
+  background: var(--border);
   margin: 0 2px;
 }
 
