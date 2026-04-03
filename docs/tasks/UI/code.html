@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Editorial Workspace - 2024 Strategy Draft</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "lark-blue": "#3370FF",
+              "on-secondary": "#ffffff",
+              "primary-fixed-dim": "#b4c5ff",
+              "tertiary-fixed": "#ffdbcc",
+              "outline-variant": "#c3c6d8",
+              "secondary-fixed": "#dbe1ff",
+              "on-primary-fixed-variant": "#003ea8",
+              "on-tertiary-container": "#fffbff",
+              "surface-container-low": "#f1f3fc",
+              "on-surface-variant": "#424655",
+              "inverse-surface": "#2d3137",
+              "error": "#ba1a1a",
+              "on-tertiary-fixed": "#351000",
+              "on-error": "#ffffff",
+              "surface-container": "#ebeef6",
+              "surface-dim": "#d7dae2",
+              "on-secondary-fixed": "#00174b",
+              "secondary": "#475c99",
+              "on-primary-fixed": "#00174b",
+              "tertiary": "#9e3e00",
+              "surface-container-lowest": "#ffffff",
+              "background": "#f8f9ff",
+              "tertiary-fixed-dim": "#ffb695",
+              "on-error-container": "#93000a",
+              "primary-container": "#2a6af9",
+              "on-surface": "#181c22",
+              "on-secondary-container": "#334884",
+              "on-primary": "#ffffff",
+              "secondary-container": "#a5b9fd",
+              "outline": "#737687",
+              "error-container": "#ffdad6",
+              "surface-tint": "#0053db",
+              "surface-container-highest": "#dfe2eb",
+              "surface": "#f8f9ff",
+              "surface-container-high": "#e5e8f0",
+              "on-tertiary-fixed-variant": "#7b2e00",
+              "secondary-fixed-dim": "#b4c5ff",
+              "inverse-on-surface": "#eef1f9",
+              "on-tertiary": "#ffffff",
+              "on-primary-container": "#fefcff",
+              "surface-bright": "#f8f9ff",
+              "surface-variant": "#dfe2eb",
+              "primary": "#0050d6",
+              "on-background": "#181c22",
+              "primary-fixed": "#dbe1ff",
+              "on-secondary-fixed-variant": "#2e4480",
+              "inverse-primary": "#b4c5ff",
+              "tertiary-container": "#c64f00"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .glass-nav { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+      .comment-card { transition: all 0.2s ease; border: 1px solid transparent; }
+      .comment-card:hover { border-color: #3370FF33; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+      .comment-active { border-color: #3370FF; box-shadow: 0 4px 16px rgba(51, 112, 255, 0.1); }
+      .tree-item-hover:hover { background-color: rgba(51, 112, 255, 0.05); }
+      .outline-link:hover { color: #3370FF; background-color: rgba(51, 112, 255, 0.05); }
+      .outline-link.active { color: #3370FF; font-weight: 600; background-color: rgba(51, 112, 255, 0.08); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary/20">
+<!-- TopNavBar -->
+<header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm dark:shadow-none fixed top-0 z-50 flex justify-between items-center w-full px-6 py-2 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="edit_note">edit_note</span>
+<div class="flex flex-col">
+<span class="text-lg font-bold text-slate-900 dark:text-slate-100 font-['Plus_Jakarta_Sans'] tracking-tight">The Editorial Workspace</span>
+<nav class="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+<span>Home</span>
+<span class="material-symbols-outlined text-[12px]" data-icon="chevron_right">chevron_right</span>
+<span>Marketing</span>
+<span class="material-symbols-outlined text-[12px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-slate-900">Strategy</span>
+</nav>
+</div>
+</div>
+<div class="hidden lg:flex items-center gap-6 ml-8">
+<a class="text-blue-600 dark:text-blue-400 font-semibold border-b-2 border-blue-600 text-sm transition-colors py-1" href="#">File</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors py-1 px-2 rounded" href="#">Insert</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors py-1 px-2 rounded" href="#">Format</a>
+<a class="text-slate-500 dark:text-slate-400 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors py-1 px-2 rounded" href="#">Tools</a>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1 mr-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+</div>
+<button class="px-4 py-1.5 text-sm font-medium bg-surface-container-high text-on-surface rounded-lg hover:scale-102 transition-transform duration-200">Collaborate</button>
+<button class="px-4 py-1.5 text-sm font-medium bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg shadow-sm hover:scale-102 transition-transform duration-200">Share</button>
+<div class="ml-4 h-8 w-8 rounded-full bg-slate-200 overflow-hidden border border-outline-variant/20">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAQ2qVXbo8x-6kND57_ZTkfahnZ0-PqVyhjZwDaAVSs_OnITCV-eYcJO3ZLo7MDdgqXdZCWA2pp2gMW_SnmH2KY6FIWMPhEP1tU7p3SNvpSBI-NyM9e0qoq-rNpZZ6bslbmzF4WKd2V5zlE4vsNfAIUexxaLSgQP8wyVO-3po23mIc-liPpPuh622P9lZ_ackdHyhjPUV67Fv95oZpJVbXMKtB1tFhT5Ud50T3Sf4RKDhdjFBeKfWVyXIzW9Ycw3-TH1PK4FyvfXpJ"/>
+</div>
+</div>
+</header>
+<!-- Leftmost Sidebar (Document Hierarchy) -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-slate-50 dark:bg-slate-950 flex flex-col p-4 pt-20 hidden md:flex border-r border-slate-200 dark:border-slate-800 z-40">
+<div class="mb-6 px-2">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded bg-blue-700 flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-lg" data-icon="auto_stories">auto_stories</span>
+</div>
+<div>
+<h2 class="font-['Plus_Jakarta_Sans'] font-bold text-blue-700 leading-none">Editorial</h2>
+<p class="text-[10px] text-slate-500 font-medium tracking-wider uppercase">The Digital Atheneum</p>
+</div>
+</div>
+<button class="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-white dark:bg-slate-800 text-blue-600 font-bold rounded-lg border border-blue-100 shadow-sm hover:bg-slate-200 transition-all font-['Plus_Jakarta_Sans']">
+<span class="material-symbols-outlined text-lg" data-icon="add">add</span>
+<span class="text-sm">New Document</span>
+</button>
+</div>
+<nav class="flex-1 overflow-y-auto no-scrollbar space-y-0.5">
+<div class="mb-4">
+<div class="flex items-center gap-2 px-2 py-1.5 text-slate-400 font-bold text-[10px] tracking-wider uppercase font-['Plus_Jakarta_Sans']">
+<span>Workspace</span>
+</div>
+<div class="space-y-0.5">
+<div class="group">
+<button class="w-full flex items-center gap-2 px-3 py-1.5 text-slate-700 dark:text-slate-300 rounded-lg tree-item-hover transition-colors">
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="expand_more">expand_more</span>
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="folder_open">folder_open</span>
+<span class="text-sm font-medium">Strategy</span>
+</button>
+<div class="ml-4 pl-4 border-l border-slate-200 dark:border-slate-800 mt-0.5 space-y-0.5">
+<a class="flex items-center gap-2 px-3 py-1.5 bg-lark-blue/5 text-lark-blue font-semibold rounded-lg" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="description">description</span>
+<span class="text-sm">Q4 Content Strategy</span>
+</a>
+<a class="flex items-center gap-2 px-3 py-1.5 text-slate-600 dark:text-slate-400 rounded-lg tree-item-hover transition-colors" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="description">description</span>
+<span class="text-sm">2025 Roadmap</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<div class="mb-4">
+<div class="flex items-center gap-2 px-2 py-1.5 text-slate-400 font-bold text-[10px] tracking-wider uppercase font-['Plus_Jakarta_Sans']">
+<span>Resources</span>
+</div>
+<div class="space-y-0.5">
+<button class="w-full flex items-center gap-2 px-3 py-1.5 text-slate-600 dark:text-slate-400 rounded-lg tree-item-hover transition-colors">
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="chevron_right">chevron_right</span>
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="folder">folder</span>
+<span class="text-sm font-medium">Research</span>
+</button>
+<button class="w-full flex items-center gap-2 px-3 py-1.5 text-slate-600 dark:text-slate-400 rounded-lg tree-item-hover transition-colors">
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="chevron_right">chevron_right</span>
+<span class="material-symbols-outlined text-lg text-slate-400" data-icon="folder_shared">folder_shared</span>
+<span class="text-sm font-medium">Shared</span>
+</button>
+</div>
+</div>
+</nav>
+<div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+<span class="text-sm">Trash</span>
+</a>
+</div>
+</aside>
+<!-- Second Column (Fixed Document Outline) -->
+<aside class="fixed left-64 top-0 h-full w-60 bg-white border-r border-slate-200 flex flex-col pt-20 hidden lg:flex z-30">
+<div class="p-6">
+<div class="flex items-center justify-between mb-6">
+<span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase font-['Plus_Jakarta_Sans']">Outline</span>
+<span class="material-symbols-outlined text-sm text-slate-300" data-icon="unfold_more">unfold_more</span>
+</div>
+<nav class="space-y-1 overflow-y-auto no-scrollbar max-h-[calc(100vh-160px)]">
+<a class="outline-link active block px-3 py-2 text-sm rounded-lg transition-colors truncate" href="#executive-overview">
+              1. Executive Overview
+            </a>
+<a class="outline-link block px-3 py-2 text-sm text-slate-500 rounded-lg transition-colors pl-8 truncate" href="#">
+              01 Research Phase
+            </a>
+<a class="outline-link block px-3 py-2 text-sm text-slate-500 rounded-lg transition-colors pl-8 truncate" href="#">
+              02 Iterative Drafting
+            </a>
+<a class="outline-link block px-3 py-2 text-sm text-slate-700 rounded-lg transition-colors truncate mt-2 font-medium" href="#core-methodology">
+              2. Core Methodology
+            </a>
+<a class="outline-link block px-3 py-2 text-sm text-slate-500 rounded-lg transition-colors pl-8 truncate" href="#">
+              2.1 Content Pillars
+            </a>
+<a class="outline-link block px-3 py-2 text-sm text-slate-700 rounded-lg transition-colors truncate mt-2 font-medium" href="#">
+              3. Distribution Channels
+            </a>
+</nav>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="md:ml-64 lg:ml-[31rem] lg:mr-80 flex min-h-screen pt-20 pb-24 transition-all duration-300 ease-in-out">
+<main class="flex-1 transition-all duration-300 ease-in-out">
+<div class="max-w-4xl mx-auto px-6 lg:px-12">
+<!-- Document Header -->
+<div class="mb-12">
+<div class="flex items-center gap-2 text-slate-400 mb-6 group cursor-pointer">
+<span class="material-symbols-outlined text-sm" data-icon="calendar_today">calendar_today</span>
+<span class="text-xs font-medium uppercase tracking-widest">Last modified: Oct 24, 2024</span>
+</div>
+<h1 class="text-5xl font-extrabold font-headline text-on-surface tracking-tight leading-[1.1] mb-8">
+                    Q4 Content Strategy &amp; <br/><span class="text-primary">Global Distribution</span>
+</h1>
+<div class="flex items-center gap-4 py-4 border-y border-outline-variant/10">
+<div class="flex -space-x-2">
+<img alt="User" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb_8sD1MH-wVVGd2USDxXBCPu93fYWFtVMAptuKWrtCPAI7uO9AycoLbr5R2EtGOJQu5aWgtbcU5PqsJIAwlqVu8Ms0p7TMW6Ftl20hFvOhfxAr1MX4uLB_MzvxbbyO-3X55R_DuMjNT9OdXwrVu6ZjXc8iSBgL2GXgz68HEsULa-ke8PdUDo5EhnvlBEzWRWI9oslqqTgdax9XLeqXEsc9SQxBCCTnp9WqzFSFdzRVc1dymICG0H-hBNG_GnDwt5toqLZlwu9pZyI"/>
+<img alt="User" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1w8bVxRG0b19fRCReWD2RkeMbroeSrLUj4mmlsVMH6rpQ3L8_TCGD1Ff4Tzw3BFJHrLStCJNCkLlGd6GqWZ-eBJwLziLa8NsMhfVm-FdtrOS6Uk0uhr626a3F5sF5T3v42R7KjpNMwnXn8Sw6MV6cne9ycais_Pwg3-bfZ-AV3W40H41V7R4jfSfOMXYxOk9MbbsfscD163mOQolfVLQTRNNtxCELcNcILMDtM5u16GyM56m3gsAJ9lQsC8tQK3hwuEHFV9kUhla9"/>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border-2 border-white flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+3</div>
+</div>
+<span class="text-sm text-on-surface-variant">Editing now with <span class="font-semibold">Sarah</span> and <span class="font-semibold">James</span></span>
+</div>
+</div>
+<!-- Floating Markdown Toolbar -->
+<div class="sticky top-20 z-40 flex justify-center mb-10">
+<div class="bg-white/90 backdrop-blur-xl border border-slate-200/40 shadow-[0_12px_32px_-4px_rgba(24,28,34,0.06)] px-4 py-2 rounded-xl flex items-center gap-1">
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Bold"><span class="material-symbols-outlined" data-icon="format_bold">format_bold</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Italic"><span class="material-symbols-outlined" data-icon="format_italic">format_italic</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Strikethrough"><span class="material-symbols-outlined" data-icon="strikethrough_s">strikethrough_s</span></button>
+<div class="w-px h-6 bg-slate-200 mx-1"></div>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Heading 1"><span class="material-symbols-outlined" data-icon="format_h1">format_h1</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Heading 2"><span class="material-symbols-outlined" data-icon="format_h2">format_h2</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="List"><span class="material-symbols-outlined" data-icon="format_list_bulleted">format_list_bulleted</span></button>
+<div class="w-px h-6 bg-slate-200 mx-1"></div>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Checkbox"><span class="material-symbols-outlined" data-icon="check_box">check_box</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Code"><span class="material-symbols-outlined" data-icon="code">code</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Link"><span class="material-symbols-outlined" data-icon="link">link</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Image"><span class="material-symbols-outlined" data-icon="image">image</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors" title="Quote"><span class="material-symbols-outlined" data-icon="format_quote">format_quote</span></button>
+</div>
+</div>
+<!-- Content Area -->
+<article class="bg-surface-container-lowest rounded-2xl p-8 md:p-12 shadow-sm min-h-[1000px] prose prose-slate max-w-none">
+<h2 class="text-3xl font-bold font-headline mb-6 text-on-surface" id="executive-overview">1. Executive Overview</h2>
+<p class="text-lg leading-relaxed text-on-surface-variant mb-8 font-body">
+                    In the evolving digital landscape, our editorial mission remains clear: to synthesize complex information into authoritative narratives. This quarter, we focus on <span class="font-semibold text-lark-blue bg-lark-blue/10 px-1 rounded-sm underline underline-offset-4 decoration-lark-blue/30 cursor-pointer" id="comment-trigger-1">omni-channel synchronicity</span>, ensuring our core messaging remains consistent across whitepapers, social snippets, and interactive case studies.
+                </p>
+<div class="my-10 bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant/10">
+<img alt="Strategy Visual" class="w-full h-64 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBu2sAT2ZxN-2OPIlh6L1RdPf742Yev4HtkP_xZw643me6L5z10hX0nBUYoHZVuMszU3FIixpvunrApQyzr-8AeFZ9AGgRvlS6-vbEsfagT5vMvdwIteW3OCChgDmjU3Y8CY5oU3aoqXFc_hFgzQEqkLO44NPm6ez8y7D46mu57ivsrTnyEfpq4g9psdWHK8LdMfSvkL9ATadnbee97IOGnG_LwkNlhhxR3TSlOYE07Lv8AOtb7GOSm8wT1tDKwhYVhu8IXkTKC3_MN"/>
+<div class="p-4 bg-white/50 backdrop-blur-sm italic text-sm text-slate-500">
+                        Fig 1.1: Visualizing the interconnectivity of our Q4 content pillars.
+                    </div>
+</div>
+<h3 class="text-2xl font-bold font-headline mb-4 text-on-surface" id="core-methodology">2. Core Methodology</h3>
+<p class="mb-6 leading-relaxed text-on-surface-variant">Our approach is divided into three distinct phases to ensure quality and scalability:</p>
+<ul class="space-y-4 mb-8">
+<li class="flex items-start gap-4">
+<span class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">01</span>
+<div class="flex-1">
+<span class="font-bold text-on-surface block mb-1">Deep Research Phase</span>
+<span class="text-on-surface-variant text-sm">Leveraging primary sources and data-driven insights to establish authority.</span>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">02</span>
+<div class="flex-1">
+<span class="font-bold text-on-surface block mb-1">Iterative Drafting</span>
+<span class="text-on-surface-variant text-sm">Rapid prototyping of concepts with peer review loops.</span>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<span class="mt-1 w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">03</span>
+<div class="flex-1">
+<span class="font-bold text-on-surface block mb-1">Refinement &amp; Polishing</span>
+<span class="text-on-surface-variant text-sm">Final editorial review focused on clarity and brand voice consistency.</span>
+</div>
+</li>
+</ul>
+<blockquote class="border-l-4 border-primary pl-6 py-2 my-10 italic text-xl text-on-surface-variant bg-surface-container-low/50 rounded-r-lg">
+                    "Clarity is not the absence of complexity, but the successful navigation of it."
+                    <footer class="text-sm font-bold mt-2 not-italic text-slate-400">— Editorial Board Directives</footer>
+</blockquote>
+</article>
+</div>
+</main>
+<!-- Right Sidebar (Comments only) -->
+<aside class="w-80 border-l border-slate-200 bg-white/50 backdrop-blur-sm hidden lg:flex flex-col fixed right-0 top-0 h-full py-20 z-40 transition-all duration-300 ease-in-out">
+<div class="flex items-center px-4 border-b border-slate-200 h-14">
+<h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+<span class="material-symbols-outlined text-lark-blue text-lg" data-icon="chat_bubble">chat_bubble</span>
+            Comments
+          </h3>
+<span class="ml-2 text-[10px] px-1.5 py-0.5 bg-error text-white rounded-full font-bold">2</span>
+<button class="ml-auto text-lark-blue text-[10px] font-bold uppercase tracking-tight hover:underline">All Resolved</button>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6">
+<!-- Comment Card 1 -->
+<div class="comment-card comment-active bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+<div class="flex items-start gap-3 mb-3">
+<img alt="User" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb_8sD1MH-wVVGd2USDxXBCPu93fYWFtVMAptuKWrtCPAI7uO9AycoLbr5R2EtGOJQu5aWgtbcU5PqsJIAwlqVu8Ms0p7TMW6Ftl20hFvOhfxAr1MX4uLB_MzvxbbyO-3X55R_DuMjNT9OdXwrVu6ZjXc8iSBgL2GXgz68HEsULa-ke8PdUDo5EhnvlBEzWRWI9oslqqTgdax9XLeqXEsc9SQxBCCTnp9WqzFSFdzRVc1dymICG0H-hBNG_GnDwt5toqLZlwu9pZyI"/>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-[12px] font-bold text-slate-900 truncate">Sarah Jenkins</span>
+<span class="text-[10px] text-slate-400">2h</span>
+</div>
+<p class="text-[13px] text-slate-600 leading-snug mt-1">
+                  Should we include a link to 2023 performance metrics for context?
+                </p>
+</div>
+</div>
+<div class="flex items-center gap-2 mb-3">
+<button class="text-[11px] font-semibold text-lark-blue hover:underline">Resolve</button>
+<button class="text-[11px] font-semibold text-slate-400 hover:underline">Edit</button>
+</div>
+<div class="pt-3 border-t border-slate-50 flex items-center gap-2">
+<input class="flex-1 text-[12px] bg-slate-50 border-none rounded-lg py-1.5 px-3 focus:ring-1 focus:ring-lark-blue/30" placeholder="Reply..." type="text"/>
+<button class="p-1.5 text-lark-blue hover:bg-lark-blue/10 rounded-lg">
+<span class="material-symbols-outlined text-sm" data-icon="send">send</span>
+</button>
+</div>
+</div>
+<!-- Comment Card 2 -->
+<div class="comment-card bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+<div class="flex items-start gap-3 mb-3">
+<img alt="User" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1w8bVxRG0b19fRCReWD2RkeMbroeSrLUj4mmlsVMH6rpQ3L8_TCGD1Ff4Tzw3BFJHrLStCJNCkLlGd6GqWZ-eBJwLziLa8NsMhfVm-FdtrOS6Uk0uhr626a3F5sF5T3v42R7KjpNMwnXn8Sw6MV6cne9ycais_Pwg3-bfZ-AV3W40H41V7R4jfSfOMXYxOk9MbbsfscD163mOQolfVLQTRNNtxCELcNcILMDtM5u16GyM56m3gsAJ9lQsC8tQK3hwuEHFV9kUhla9"/>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="text-[12px] font-bold text-slate-900 truncate">James Wilson</span>
+<span class="text-[10px] text-slate-400">45m</span>
+</div>
+<p class="text-[13px] text-slate-600 leading-snug mt-1">
+                  Visualization high-res ready for board meeting?
+                </p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="text-[11px] font-semibold text-lark-blue hover:underline">Resolve</button>
+<button class="text-[11px] font-semibold text-slate-400 hover:underline">Edit</button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-8 items-center z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-full px-8 py-3 border border-slate-200/20 shadow-[0_12px_32px_-4px_rgba(24,28,34,0.06)]">
+<button class="flex flex-col items-center gap-1 text-blue-600 dark:text-blue-300">
+<span class="material-symbols-outlined" data-icon="segment">segment</span>
+<span class="text-[11px] font-medium font-['Inter']">Words</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+<span class="text-[11px] font-medium font-['Inter']">Status</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<span class="text-[11px] font-medium font-['Inter']">Preview</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span class="text-[11px] font-medium font-['Inter']">Comments</span>
+</button>
+</nav>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform duration-300 z-40 lg:right-[340px]">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</body></html>
