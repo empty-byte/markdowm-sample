@@ -127,12 +127,12 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   {
     key: CrepeFeature.Toolbar,
     label: 'Toolbar',
-    description: '閫変腑鏂囨湰鏃舵樉绀烘牸寮忓伐鍏锋爮',
+    description: '选中文本时显示格式工具栏',
   },
   {
     key: CrepeFeature.BlockEdit,
     label: 'Block Edit + Slash',
-    description: '宸︿晶鍧楁墜鏌勩€佹嫋鎷戒笌 / 鑿滃崟',
+    description: '左侧块手柄、拖拽与 / 菜单',
   },
   {
     key: CrepeFeature.CodeMirror,
@@ -142,17 +142,17 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   {
     key: CrepeFeature.Table,
     label: 'Table Block',
-    description: '琛ㄦ牸鎻掑叆銆佽鍒楁搷浣滀笌瀵归綈',
+    description: '表格插入、行列操作与对齐',
   },
   {
     key: CrepeFeature.ImageBlock,
     label: 'Image Block + Inline',
-    description: '鍥剧墖鍧椼€佽鍐呭浘鐗囦笌涓婁紶鑳藉姏',
+    description: '图片块、行内图片与上传能力',
   },
   {
     key: CrepeFeature.LinkTooltip,
     label: 'Link Tooltip',
-    description: '閾炬帴鎻愮ず銆佺紪杈戜笌澶嶅埗',
+    description: '链接提示、编辑与复制',
   },
   {
     key: CrepeFeature.ListItem,
@@ -162,7 +162,7 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   {
     key: CrepeFeature.Cursor,
     label: 'Cursor',
-    description: 'gap cursor / drop cursor 澧炲己',
+    description: 'gap cursor / drop cursor 增强',
   },
   {
     key: CrepeFeature.Latex,
@@ -228,7 +228,7 @@ const embedEditTarget = ref<EmbedEditRequestDetail | null>(null)
 const whiteboardEditorVisible = ref(false)
 const whiteboardEditorMode = ref<'insert' | 'edit'>('insert')
 const whiteboardEditTarget = ref<WhiteboardEditRequestDetail | null>(null)
-const whiteboardEditorTitle = ref('鐧芥澘')
+const whiteboardEditorTitle = ref('白板')
 const whiteboardEditorScene = ref<unknown>(null)
 const flowchartEditorVisible = ref(false)
 const flowchartEditorMode = ref<'insert' | 'edit'>('insert')
@@ -239,7 +239,7 @@ const flowchartEditorScene = ref<unknown>(null)
 const mindmapEditorVisible = ref(false)
 const mindmapEditorMode = ref<'insert' | 'edit'>('insert')
 const mindmapEditTarget = ref<MindmapEditRequestDetail | null>(null)
-const mindmapEditorTitle = ref('鎬濈淮瀵煎浘')
+const mindmapEditorTitle = ref('思维导图')
 const mindmapEditorScene = ref<unknown>(null)
 
 
@@ -269,7 +269,7 @@ provider.attach()
 const collaboratorPalette = ['#2f6fed', '#d9480f', '#2b8a3e', '#8e44ad', '#0c8599', '#c2255c']
 const localCollaborator: CollaboratorIdentity = {
   id: `user_${ydoc.clientID}`,
-  name: `鍗忎綔鑰?${String(ydoc.clientID).slice(-4)}`,
+  name: `协作者 ${String(ydoc.clientID).slice(-4)}`,
   color: collaboratorPalette[ydoc.clientID % collaboratorPalette.length],
 }
 const collaborators = ref<CollaboratorPresence[]>([])
@@ -336,7 +336,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
   const actions: PaletteAction[] = crepeFeatureItems.map((item) => ({
     id: `feature-${item.key}`,
     group: 'Feature',
-    label: `${featureFlags.value[item.key] ? '鍏抽棴' : '鍚敤'} ${item.label}`,
+    label: `${featureFlags.value[item.key] ? '关闭' : '启用'} ${item.label}`,
     description: item.description,
     run: () => {
       featureFlags.value[item.key] = !featureFlags.value[item.key]
@@ -347,8 +347,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'theme-nord',
       group: 'Theme',
-      label: '鍒囨崲涓婚锛歂ord',
-      description: '鏇村亸鐭ヨ瘑搴撻鏍肩殑杞婚噺涓婚',
+      label: '切换主题：Nord',
+      description: '更偏知识库风格的轻量主题',
       run: () => {
         theme.value = 'nord'
       },
@@ -356,7 +356,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'theme-frame',
       group: 'Theme',
-      label: '鍒囨崲涓婚锛欶rame',
+      label: '切换主题：Frame',
       description: '更中性、文档感更强的主题',
       run: () => {
         theme.value = 'frame'
@@ -365,8 +365,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'theme-classic',
       group: 'Theme',
-      label: '鍒囨崲涓婚锛欳lassic',
-      description: '瀹樻柟缁忓吀瑙嗚椋庢牸',
+      label: '切换主题：Classic',
+      description: '官方经典视觉风格',
       run: () => {
         theme.value = 'classic'
       },
@@ -392,8 +392,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'toggle-markdown-pane',
       group: 'Editor',
-      label: `${markdownPaneVisible.value ? '闅愯棌' : '鏄剧ず'} Markdown 闈㈡澘`,
-      description: '鍒囨崲鍙充晶 Markdown 闈㈡澘鏄剧ず',
+      label: `${markdownPaneVisible.value ? '隐藏' : '显示'} Markdown 面板`,
+      description: '切换右侧 Markdown 面板显示',
       run: () => {
         markdownPaneVisible.value = !markdownPaneVisible.value
       },
@@ -402,7 +402,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
       id: 'toggle-auto-sync',
       group: 'Editor',
       label: `${autoSyncMarkdown.value ? '关闭' : '开启'} Markdown 自动同步`,
-      description: '鎺у埗鍙充晶 Markdown 杈撳叆鏃舵槸鍚﹁嚜鍔ㄥ簲鐢ㄥ埌宸︿晶',
+      description: '控制右侧 Markdown 输入时是否自动应用到左侧',
       run: () => {
         autoSyncMarkdown.value = !autoSyncMarkdown.value
       },
@@ -411,7 +411,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
       id: 'sync-pane',
       group: 'Editor',
       label: '将右侧 Markdown 应用到左侧',
-      description: '鎵嬪姩瑙﹀彂 replaceAll 鍚屾',
+      description: '手动触发 replaceAll 同步',
       run: () => {
         void applyMarkdownFromPane()
       },
@@ -419,7 +419,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'sample',
       group: 'Editor',
-      label: '鎭㈠ Playground 绀轰緥鏂囨。',
+      label: '恢复 Playground 示例文档',
       description: '重置到默认演示内容',
       run: () => {
         void resetSampleMarkdown()
@@ -428,7 +428,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'copy',
       group: 'Editor',
-      label: '澶嶅埗褰撳墠 Markdown',
+      label: '复制当前 Markdown',
       description: '把右侧文本复制到剪贴板',
       run: () => {
         void copyMarkdown()
@@ -437,8 +437,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'collab-connect',
       group: 'Collab',
-      label: '杩炴帴鍗忓悓鏈嶅姟',
-      description: '杩炴帴 Hocuspocus WebSocket',
+      label: '连接协同服务',
+      description: '连接到 Hocuspocus WebSocket',
       run: () => {
         connectCollab()
       },
@@ -446,8 +446,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'collab-disconnect',
       group: 'Collab',
-      label: '鏂紑鍗忓悓鏈嶅姟',
-      description: '鏂紑褰撳墠鎴块棿杩炴帴',
+      label: '断开协同服务',
+      description: '断开当前房间连接',
       run: () => {
         disconnectCollab()
       },
@@ -455,8 +455,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'snapshot-create',
       group: 'History',
-      label: '鍒涘缓鎵嬪姩蹇収',
-      description: '淇濆瓨褰撳墠鏂囨。涓庤瘎璁虹姸鎬侊紝鏂逛究鍚庣画杩樺師',
+      label: '创建手动快照',
+      description: '保存当前文档与评论状态，方便后续还原',
       run: () => {
         createHistorySnapshot()
       },
@@ -473,8 +473,8 @@ const paletteActions = computed<PaletteAction[]>(() => {
     {
       id: 'insert-mindmap',
       group: 'Insert',
-      label: '鎻掑叆鎬濈淮瀵煎浘',
-      description: '鎵撳紑鎬濈淮瀵煎浘缂栬緫寮规骞舵彃鍏ュ埌鏂囨。',
+      label: '插入思维导图',
+      description: '打开思维导图编辑弹框并插入到文档',
       run: () => {
         openMindmapDialog()
       },
@@ -769,7 +769,7 @@ function parseSnapshotPayload(content: string): SnapshotPayload {
  */
 function getDefaultSnapshotLabel() {
   // Human-friendly incremental default label for manual snapshots.
-  return `鎵嬪姩蹇収 ${snapshots.value.length + 1}`
+  return `手动快照 ${snapshots.value.length + 1}`
 }
 
 /**
@@ -1035,7 +1035,7 @@ async function rebuildEditor(seed?: string) {
         buildMenu: (builder) => {
           const advancedGroup = builder.getGroup('advanced')
           advancedGroup.addItem('embedWeb', {
-            label: '鍐呭祵缃戦〉',
+            label: '内嵌网页',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
             onRun: () => {
               openEmbedDialog()
@@ -1043,7 +1043,7 @@ async function rebuildEditor(seed?: string) {
           })
 
           advancedGroup.addItem('whiteboard', {
-            label: '鐧芥澘',
+            label: '白板',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h10"/><path d="M7 12h7"/><path d="M10 18v2"/><path d="M14 18v2"/></svg>',
             onRun: () => {
               openWhiteboardDialog()
@@ -1059,7 +1059,7 @@ async function rebuildEditor(seed?: string) {
           })
 
           advancedGroup.addItem('mindmap', {
-            label: '鎬濈淮瀵煎浘',
+            label: '思维导图',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M10.4 6.2L7.6 10.8"/><path d="M13.6 6.2L16.4 10.8"/><path d="M7.8 13.2L10.8 17"/><path d="M16.2 13.2L13.2 17"/></svg>',
             onRun: () => {
               openMindmapDialog()
@@ -1382,7 +1382,7 @@ function confirmEmbed(payload: { url: string; title: string }) {
   const url = payload.url.trim()
   if (!isValidEmbedUrl(url)) return
 
-  const title = payload.title.trim() || '鍐呭祵缃戦〉'
+  const title = payload.title.trim() || '内嵌网页'
   const target = embedEditTarget.value
 
   if (embedDialogMode.value === 'edit' && target) {
@@ -1426,7 +1426,7 @@ function openWhiteboardDialog() {
   // Open insert mode with fresh title/scene.
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
-  whiteboardEditorTitle.value = '鐧芥澘'
+  whiteboardEditorTitle.value = '白板'
   whiteboardEditorScene.value = null
   whiteboardEditorVisible.value = true
 }
@@ -1441,7 +1441,7 @@ function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
   whiteboardEditTarget.value = detail
 
   const stored = getWhiteboardById(detail.id)
-  whiteboardEditorTitle.value = detail.title || stored?.title || '鐧芥澘'
+  whiteboardEditorTitle.value = detail.title || stored?.title || '白板'
   whiteboardEditorScene.value = stored?.scene ?? null
   whiteboardEditorVisible.value = true
 }
@@ -1454,7 +1454,7 @@ function closeWhiteboardEditor() {
   whiteboardEditorVisible.value = false
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
-  whiteboardEditorTitle.value = '鐧芥澘'
+  whiteboardEditorTitle.value = '白板'
   whiteboardEditorScene.value = null
 }
 
@@ -1467,7 +1467,7 @@ function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: White
   // Persist whiteboard record then replace corresponding markdown range.
   if (!crepe) return
 
-  const normalizedTitle = payload.title.trim() || '鐧芥澘'
+  const normalizedTitle = payload.title.trim() || '白板'
   const record = upsertWhiteboard({
     id: detail.id,
     title: normalizedTitle,
@@ -1520,7 +1520,7 @@ function saveWhiteboard(payload: WhiteboardSavePayload) {
   }
 
   const id = createWhiteboardId()
-  const normalizedTitle = payload.title.trim() || '鐧芥澘'
+  const normalizedTitle = payload.title.trim() || '白板'
   upsertWhiteboard({
     id,
     title: normalizedTitle,
@@ -1703,7 +1703,7 @@ function openMindmapDialog() {
   // Open insert mode with fresh title/scene.
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
-  mindmapEditorTitle.value = '鎬濈淮瀵煎浘'
+  mindmapEditorTitle.value = '思维导图'
   mindmapEditorScene.value = null
   mindmapEditorVisible.value = true
 }
@@ -1718,7 +1718,7 @@ function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
   mindmapEditTarget.value = detail
 
   const stored = getMindmapById(detail.id)
-  mindmapEditorTitle.value = detail.title || stored?.title || '鎬濈淮瀵煎浘'
+  mindmapEditorTitle.value = detail.title || stored?.title || '思维导图'
   mindmapEditorScene.value = stored?.scene ?? null
   mindmapEditorVisible.value = true
 }
@@ -1731,7 +1731,7 @@ function closeMindmapEditor() {
   mindmapEditorVisible.value = false
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
-  mindmapEditorTitle.value = '鎬濈淮瀵煎浘'
+  mindmapEditorTitle.value = '思维导图'
   mindmapEditorScene.value = null
 }
 
@@ -1825,7 +1825,7 @@ function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSave
   // Persist mindmap record and replace current token range with fresh content.
   if (!crepe) return
 
-  const normalizedTitle = payload.title.trim() || '鎬濈淮瀵煎浘'
+  const normalizedTitle = payload.title.trim() || '思维导图'
   const existing = getMindmapById(detail.id)
   const nextPreview = payload.previewUrl.trim() || existing?.previewUrl || ''
   const record = upsertMindmap({
@@ -1869,7 +1869,7 @@ function saveMindmap(payload: MindmapSavePayload) {
   }
 
   const id = createMindmapId()
-  const normalizedTitle = payload.title.trim() || '鎬濈淮瀵煎浘'
+  const normalizedTitle = payload.title.trim() || '思维导图'
   upsertMindmap({
     id,
     title: normalizedTitle,
@@ -2064,17 +2064,17 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="toolbar action-bar">
-      <button type="button" class="btn" @click="connectCollab">杩炴帴鍗忓悓</button>
-      <button type="button" class="btn ghost" @click="disconnectCollab">鏂紑鍗忓悓</button>
+      <button type="button" class="btn" @click="connectCollab">连接协同</button>
+      <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>
       <span class="status" :data-online="status === 'connected'">{{ status }}</span>
       <span class="status collab-count" :data-online="status === 'connected'">{{ collaboratorCountLabel }}</span>
       <button type="button" class="btn ghost" :aria-expanded="markdownPaneVisible" @click="markdownPaneVisible = !markdownPaneVisible">
-        {{ markdownPaneVisible ? '闅愯棌 Markdown' : '鏄剧ず Markdown' }}
+        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
       </button>
-      <button type="button" class="btn ghost" @click="void applyMarkdownFromPane">搴旂敤鍙充晶 Markdown</button>
-      <button type="button" class="btn ghost" @click="resetSampleMarkdown">鎭㈠绀轰緥</button>
+      <button type="button" class="btn ghost" @click="void applyMarkdownFromPane">应用右侧 Markdown</button>
+      <button type="button" class="btn ghost" @click="resetSampleMarkdown">恢复示例</button>
       <button type="button" class="btn ghost" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
-      <button type="button" class="btn ghost" @click="openPalette">鍔熻兘闈㈡澘 (Ctrl+K)</button>
+      <button type="button" class="btn ghost" @click="openPalette">功能面板 (Ctrl+K)</button>
     </div>
 
     <div class="floating-markdown-toolbar" aria-label="Formatting toolbar">
@@ -2200,13 +2200,13 @@ onBeforeUnmount(() => {
 
   <div v-if="paletteVisible" class="command-menu-mask" @click="closePalette">
     <div class="command-menu" @click.stop>
-      <div class="command-menu-title">Milkdown 鍔熻兘闈㈡澘</div>
+      <div class="command-menu-title">Milkdown 功能面板</div>
       <input
         ref="paletteInputRef"
         v-model="paletteQuery"
         class="command-input"
         type="text"
-        placeholder="鎼滅储鍔熻兘锛歵heme / collab / table / slash ..."
+        placeholder="搜索功能：theme / collab / table / slash ..."
         @keydown="onPaletteKeydown"
       />
 
@@ -2226,7 +2226,7 @@ onBeforeUnmount(() => {
           <p>{{ item.description }}</p>
         </li>
       </ul>
-      <p v-if="filteredPaletteActions.length === 0" class="panel-tip">娌℃湁鍖归厤鍔熻兘</p>
+      <p v-if="filteredPaletteActions.length === 0" class="panel-tip">没有匹配功能</p>
     </div>
   </div>
 
