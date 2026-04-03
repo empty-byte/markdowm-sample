@@ -1705,7 +1705,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mindmap-editor-mask {
-  z-index: 38;
+  z-index: 340;
 }
 
 .mindmap-editor-dialog {

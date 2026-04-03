@@ -1178,7 +1178,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .flowchart-editor-mask {
-  z-index: 38;
+  z-index: 340;
 }
 
 .flowchart-editor-dialog {

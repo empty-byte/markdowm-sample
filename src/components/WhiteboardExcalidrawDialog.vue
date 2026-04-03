@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .whiteboard-editor-mask {
-  z-index: 38;
+  z-index: 340;
 }
 
 .whiteboard-editor-dialog {
