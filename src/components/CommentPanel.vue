@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { EditorComment } from '../features/editor-enhance/comments'
-import '../styles/pixel-right.css'
 
 const props = defineProps<{
   comments: EditorComment[]
@@ -125,7 +124,7 @@ defineExpose({
           v-model="commentDraftModel"
           class="comment-input"
           rows="4"
-          placeholder="例如：这里建议补充背景、数据来源，或者给出结论解释。"
+          placeholder="例如：这里需要补充背景、数据来源，或者给出结论解释。"
         ></textarea>
 
         <div class="row-actions comment-actions">

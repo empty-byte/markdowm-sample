@@ -2115,7 +2115,7 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <div class="milk-workbench editorial-workbench">
+    <div class="milk-workbench editorial-workbench" data-layout-slot="workbench">
       <section class="play-pane play-pane-editor editorial-pane">
         <header class="play-pane-head">
           <h3>Visual Editor</h3>
@@ -2128,6 +2128,7 @@ onBeforeUnmount(() => {
 
       <aside
         class="play-side-panels editorial-comment-drawer"
+        data-layout-slot="comment-drawer"
         :class="{ 'is-open': commentDrawerOpen, 'is-collapsed': !commentDrawerOpen }"
       >
         <CommentPanel
@@ -2144,33 +2145,6 @@ onBeforeUnmount(() => {
           @delete-comment="deleteComment"
         />
       </aside>
-
-      <div
-        v-if="historyModalOpen"
-        class="history-modal-mask"
-        role="presentation"
-        @click="closeHistoryModal"
-      >
-        <div
-          class="history-modal-shell"
-          role="dialog"
-          aria-modal="true"
-          aria-label="History snapshots"
-          @click.stop
-        >
-          <HistoryPanel
-            :snapshots="snapshots"
-            :active-snapshot-id="activeSnapshotId"
-            :history-collapsed="false"
-            v-model:snapshot-label="snapshotLabel"
-            @toggle-collapse="closeHistoryModal"
-            @create-snapshot="createHistorySnapshot"
-            @select-snapshot="void selectHistorySnapshot($event)"
-            @restore-snapshot="void restoreHistorySnapshot($event)"
-            @delete-snapshot="deleteHistorySnapshot"
-          />
-        </div>
-      </div>
 
       <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown editorial-pane">
         <header class="play-pane-head">
@@ -2193,13 +2167,41 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
+    <div
+      v-if="historyModalOpen"
+      class="history-modal-mask ed-modal-mask"
+      data-layout-slot="history-modal"
+      role="presentation"
+      @click="closeHistoryModal"
+    >
+      <div
+        class="history-modal-shell ed-modal-panel ed-modal-panel--wide"
+        role="dialog"
+        aria-modal="true"
+        aria-label="History snapshots"
+        @click.stop
+      >
+        <HistoryPanel
+          :snapshots="snapshots"
+          :active-snapshot-id="activeSnapshotId"
+          :history-collapsed="false"
+          v-model:snapshot-label="snapshotLabel"
+          @toggle-collapse="closeHistoryModal"
+          @create-snapshot="createHistorySnapshot"
+          @select-snapshot="void selectHistorySnapshot($event)"
+          @restore-snapshot="void restoreHistorySnapshot($event)"
+          @delete-snapshot="deleteHistorySnapshot"
+        />
+      </div>
+    </div>
+
     <p class="tip">
       编辑提示：在左侧输入 <code>/</code> 打开块菜单；按 <code>Ctrl+K</code> 打开功能面板；选中正文后可添加评论，历史通过顶部按钮打开弹框。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 
-  <div v-if="paletteVisible" class="command-menu-mask" @click="closePalette">
-    <div class="command-menu" @click.stop>
+  <div v-if="paletteVisible" class="command-menu-mask ed-modal-mask" @click="closePalette">
+    <div class="command-menu ed-modal-panel ed-modal-panel--compact" @click.stop>
       <div class="command-menu-title">Milkdown 功能面板</div>
       <input
         ref="paletteInputRef"

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import './styles/pixel-left.css'
-import './styles/pixel-body.css'
 
 const isStrategyExpanded = ref(true)
 const HISTORY_MODAL_OPEN_EVENT = 'open-history-modal'

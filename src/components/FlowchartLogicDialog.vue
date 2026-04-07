@@ -1178,7 +1178,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .flowchart-editor-mask {
-  z-index: 340;
+  z-index: 1300;
 }
 
 .flowchart-editor-dialog {
@@ -1496,6 +1496,7 @@ onBeforeUnmount(() => {
   position: relative;
   min-width: 0;
   min-height: 0;
+  height: 100%;
 }
 
 .flowchart-canvas-wrap.is-drop-active::after {
@@ -1511,6 +1512,7 @@ onBeforeUnmount(() => {
 .flowchart-editor-host {
   width: 100%;
   height: 100%;
+  min-height: 320px;
 }
 
 .flowchart-drop-hint {
@@ -1674,6 +1676,11 @@ onBeforeUnmount(() => {
   line-height: 1.45;
   background: #0f1727;
   color: #d3e6ff;
+}
+
+:deep(.lf-mini-map) {
+  width: 168px !important;
+  height: 128px !important;
 }
 </style>
 

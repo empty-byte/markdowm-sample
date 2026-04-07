@@ -359,46 +359,82 @@ code {
 .command-menu-mask {
   position: fixed;
   inset: 0;
-  background: rgba(12, 18, 28, 0.3);
   display: grid;
   place-items: center;
-  z-index: 320;
+  z-index: var(--ed-z-modal, 1300);
+}
+
+.command-menu-mask:not(.ed-modal-mask) {
+  background: rgba(12, 18, 28, 0.3);
+}
+
+.command-menu-mask.ed-modal-mask {
+  background: var(--ed-dialog-backdrop, rgba(10, 18, 30, 0.52));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .command-menu {
-  width: min(560px, calc(100vw - 24px));
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow: 0 16px 40px rgba(30, 42, 60, 0.2);
+  width: min(640px, calc(100vw - 32px));
+  border-radius: 20px;
+  border: 1px solid var(--ed-dialog-border, rgba(199, 210, 227, 0.55));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 248, 255, 0.96)),
+    var(--ed-dialog-surface, #fff);
+  box-shadow: 0 20px 50px rgba(18, 28, 44, 0.22);
+  overflow: hidden;
+  padding: 0;
 }
 
 .command-menu-title {
-  font-weight: 700;
-  margin-bottom: 10px;
+  margin: 0;
+  padding: 16px 20px 12px;
+  font-family: var(--ed-font-display, 'Plus Jakarta Sans', 'Inter', sans-serif);
+  font-size: 18px;
+  font-weight: 800;
+  color: #14243e;
+  border-bottom: 1px solid color-mix(in srgb, var(--ed-dialog-border, #c7d2e3) 76%, white);
+  background: linear-gradient(180deg, rgba(249, 251, 255, 0.98), rgba(241, 244, 250, 0.96));
+}
+
+.command-menu .command-input {
+  margin: 12px 20px 0;
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--ed-dialog-border, #c7d2e3) 86%, white);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 255, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.command-menu .command-input:focus {
+  border-color: color-mix(in srgb, var(--ed-color-primary, #165dff) 72%, white);
+  box-shadow: 0 0 0 3px rgba(0, 80, 214, 0.14);
 }
 
 .command-list {
   list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
+  margin: 12px 0 0;
+  padding: 0 20px 20px;
   display: grid;
   gap: 6px;
-  max-height: 280px;
+  max-height: min(52vh, 420px);
   overflow: auto;
 }
 
 .command-item {
-  border: 1px solid #d9e2ef;
-  border-radius: 10px;
-  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--ed-dialog-border, #c7d2e3) 84%, white);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.92);
   cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .command-item:hover {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--ed-color-primary, #165dff) 34%, var(--ed-dialog-border, #c7d2e3));
   background: #f5f9ff;
+  box-shadow: 0 10px 18px rgba(20, 38, 66, 0.1);
+  transform: translateY(-1px);
 }
 
 .command-item p {

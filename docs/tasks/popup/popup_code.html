@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Share Settings - The Editorial Workspace</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary": "#475c99",
+                        "on-error": "#ffffff",
+                        "background": "#f8f9ff",
+                        "tertiary-container": "#c64f00",
+                        "tertiary": "#9e3e00",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#fefcff",
+                        "surface-container-low": "#f1f3fc",
+                        "primary": "#0050d6",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#737687",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-bright": "#f8f9ff",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-error-container": "#93000a",
+                        "surface": "#f8f9ff",
+                        "surface-variant": "#dfe2eb",
+                        "surface-tint": "#0053db",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-primary-fixed": "#00174b",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary-container": "#334884",
+                        "surface-container-highest": "#dfe2eb",
+                        "on-tertiary-fixed-variant": "#7b2e00",
+                        "on-surface-variant": "#424655",
+                        "on-secondary-fixed": "#00174b",
+                        "secondary-container": "#a5b9fd",
+                        "on-primary": "#ffffff",
+                        "on-background": "#181c22",
+                        "error": "#ba1a1a",
+                        "on-surface": "#181c22",
+                        "on-secondary-fixed-variant": "#2e4480",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2d3137",
+                        "surface-container-high": "#e5e8f0",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "surface-container": "#ebeef6",
+                        "outline-variant": "#c3c6d8",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-dim": "#d7dae2",
+                        "inverse-on-surface": "#eef1f9",
+                        "primary-container": "#2a6af9"
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .tonal-shift {
+            background-color: #f1f3fc;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        .ghost-border-bottom {
+            border-bottom: 1px solid rgba(115, 118, 135, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center w-full px-6 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl font-['Plus_Jakarta_Sans'] tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold text-slate-900 dark:text-white">The Editorial Workspace</span>
+<div class="hidden md:flex gap-6">
+<a class="text-blue-600 dark:text-blue-400 font-semibold border-b-2 border-blue-600 py-1" href="#">Documents</a>
+<a class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1 rounded" href="#">Shared</a>
+<a class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1 rounded" href="#">Templates</a>
+<a class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors px-2 py-1 rounded" href="#">Archive</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="User profile" class="w-8 h-8 rounded-full object-cover" data-alt="Close-up portrait of a professional woman with a friendly expression in a brightly lit modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2SuVRDyzyg9qqL3LFqUTmgoXTQRUPcmYYLh16opXGNpqVCqmqtWQSQbzS5j_I1Y0BBuAZn63qYoGgnZi6VpjBxnriTB9in7FTZQk4zVFQum223enGAwt3uXnP4RSpk0ka505girUajep3kUdgHSfxWpcvlTPz9bTlcjasZ52DhftZkgk0z1xaVV-Oy9i7koqBtBSfUkGfdc5uLS3LTDE8gUjxu7xKAvjJGZFn4kLShaCZJhmcTIqu9N4G4gjuVOtn1k80tsi_Lviq"/>
+</div>
+</nav>
+<!-- Sidebar (Underlay Context) -->
+<aside class="flex flex-col fixed left-0 top-0 h-full p-4 h-screen w-64 bg-slate-50 dark:bg-slate-950 font-['Plus_Jakarta_Sans'] font-medium pt-20">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+</div>
+<div>
+<div class="text-lg font-bold text-blue-600">Editorial</div>
+<div class="text-xs text-slate-500">Premium Workspace</div>
+</div>
+</div>
+</div>
+<button class="mb-6 w-full py-2.5 bg-primary text-white rounded-lg font-semibold flex items-center justify-center gap-2 hover:scale-102 transition-transform shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            New Document
+        </button>
+<nav class="space-y-1">
+<div class="flex items-center gap-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span>Home</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg transition-all">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span>My Drafts</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg transition-all">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span>Starred</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg transition-all">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Team Space</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-lg transition-all">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+<span>Trash</span>
+</div>
+</nav>
+</aside>
+<!-- Editor Canvas (Underlay Content) -->
+<main class="ml-64 pt-24 px-12 pb-12">
+<div class="max-w-4xl mx-auto bg-surface-container-lowest min-h-[1000px] rounded-lg shadow-sm p-20">
+<h1 class="font-headline text-5xl font-extrabold text-on-surface mb-8 tracking-tighter">Strategic Roadmap 2024</h1>
+<div class="space-y-6 text-lg text-on-surface-variant leading-relaxed">
+<p>The core objective for this fiscal year focuses on the expansion of our digital ecosystem. We aim to leverage editorial excellence to drive user engagement across all platforms.</p>
+<p>As we navigate the complexities of the current market landscape, our commitment remains focused on delivering high-quality, long-form content that resonates with our audience's intellectual curiosity.</p>
+<div class="h-40 bg-surface-container-low rounded-xl flex items-center justify-center border border-dashed border-outline-variant">
+<span class="text-slate-400">Section placeholder...</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 z-[100] bg-on-surface/10 backdrop-blur-sm flex items-center justify-center p-4">
+<!-- Modal Container -->
+<div class="bg-surface-container-lowest w-full max-w-xl rounded-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+<!-- Modal Header -->
+<div class="px-6 py-4 flex justify-between items-center ghost-border-bottom">
+<h2 class="text-xl font-headline font-bold text-on-surface">Share Settings</h2>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Modal Content -->
+<div class="p-6 space-y-6">
+<!-- Add Members Search -->
+<div class="space-y-2">
+<label class="text-sm font-medium text-on-surface-variant px-1">Add members or teams</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-24 py-2.5 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary/20 transition-all text-on-surface" placeholder="Enter email address or name..." type="text"/>
+<div class="absolute right-2">
+<button class="bg-primary text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-primary-container transition-colors">
+                                Add
+                            </button>
+</div>
+</div>
+</div>
+<!-- Current Members List -->
+<div class="space-y-4">
+<h3 class="text-xs font-bold text-outline uppercase tracking-wider px-1">People with access</h3>
+<div class="space-y-1">
+<!-- Member Item 1 -->
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low rounded-lg transition-colors group">
+<div class="flex items-center gap-3">
+<img alt="Alex Rivera" class="w-9 h-9 rounded-full object-cover" data-alt="Portrait of a young professional man with short dark hair and a confident smile in a neutral studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhFWTKlb3LF_QCo2IlXung-YT4rmVYXewhSkhpmQd85g33gX3VzrrUrhHSQ33uRAj8zCmIZiQU7Fv4VsGqT-YtjOi00qah8ITTnrF8D5susEvttx6uKq0HysoHdwigNiGhBmgA5z5elOhxX4tcz2UeW2nlHPFYYpLtg2kqfW3ilXUB8Z5GXiKjmgMI4I49hK9I95C64rjRc490srIWMXWMbry_hqInqL5R_tr3oHuXb7_TBFhfWBDiUcFPxq8e-tDeok4p3OAqkx1l"/>
+<div>
+<div class="text-sm font-semibold text-on-surface">Alex Rivera (You)</div>
+<div class="text-xs text-on-surface-variant">alex.rivera@editorial.com</div>
+</div>
+</div>
+<span class="text-xs font-medium text-outline-variant px-2 py-1">Owner</span>
+</div>
+<!-- Member Item 2 -->
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low rounded-lg transition-colors group">
+<div class="flex items-center gap-3">
+<img alt="Sarah Chen" class="w-9 h-9 rounded-full object-cover" data-alt="Professional woman with glasses smiling warmly, dressed in business casual attire against a clean light background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfdxgAZlZM8PrDPoPaICJXayOqe5yS4ZFcEZGhHNCK9lv05-nYLG-2zNuAylMxmTuv_hCHr6QlQRMZAjrH-BHy-dRga5jimJpPvYy48vioMViZekx3OpGRbEy195ekeHGTUzKL64Mh7fWJrDT1rGCj0ODXSNM_YGcADHoI7caL-8vzWsZlSYIdM8Z1mx0XcM0Jfl4S5E92nHmH1umW3PpxgLupEsa-2QBey2Jn8_Cl5SpG6MvVeZn4pmkI8O8JR_e8jpVRVUK3OR-3"/>
+<div>
+<div class="text-sm font-semibold text-on-surface">Sarah Chen</div>
+<div class="text-xs text-on-surface-variant">s.chen@editorial.com</div>
+</div>
+</div>
+<select class="text-sm border-none bg-transparent focus:ring-0 text-primary font-medium cursor-pointer py-1">
+<option>Can edit</option>
+<option>Can view</option>
+<option class="text-error">Remove</option>
+</select>
+</div>
+<!-- Member Item 3 -->
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low rounded-lg transition-colors group">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold text-xs">
+                                    MD
+                                </div>
+<div>
+<div class="text-sm font-semibold text-on-surface">Marcus Dupont</div>
+<div class="text-xs text-on-surface-variant">m.dupont@partner.org</div>
+</div>
+</div>
+<select class="text-sm border-none bg-transparent focus:ring-0 text-primary font-medium cursor-pointer py-1">
+<option>Can view</option>
+<option>Can edit</option>
+<option class="text-error">Remove</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Global Toggle -->
+<div class="pt-4 border-t border-outline-variant/20">
+<div class="flex items-center justify-between bg-surface-container-low p-4 rounded-xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="link">link</span>
+</div>
+<div>
+<div class="text-sm font-semibold text-on-surface">Anyone with the link can view</div>
+<div class="text-xs text-on-surface-variant">Private to the workspace otherwise</div>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-6 py-4 bg-surface-container-low flex justify-end gap-3">
+<button class="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+                    Cancel
+                </button>
+<button class="px-6 py-2 bg-gradient-to-br from-primary to-primary-container text-white text-sm font-semibold rounded-lg hover:scale-102 transition-transform shadow-md shadow-primary/10">
+                    Save Changes
+                </button>
+</div>
+</div>
+</div>
+<!-- Floating Action Context (FAB Suppression Logic Applied) -->
+<!-- FAB is hidden because this is a focused Share state -->
+</body></html>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { HistorySnapshot } from '../features/editor-enhance/history'
-import '../styles/pixel-right.css'
 
 const props = defineProps<{
   snapshots: HistorySnapshot[]
@@ -72,7 +71,7 @@ function getSnapshotPreview(snapshot: HistorySnapshot) {
       <div class="panel-title-block">
         <p class="panel-kicker">HISTORY</p>
         <h3>历史记录</h3>
-        <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片可还原</p>
+        <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片即可还原正文</p>
       </div>
 
       <div class="panel-head-actions">

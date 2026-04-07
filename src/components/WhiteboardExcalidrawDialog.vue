@@ -203,11 +203,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="command-menu-mask whiteboard-editor-mask" @click.self="onCancel">
-    <div class="whiteboard-editor-dialog" :class="{ 'is-fullscreen': isFullscreen }" @click.stop>
-      <div class="whiteboard-editor-head">
-        <div class="whiteboard-editor-head-top">
-          <div class="whiteboard-editor-title">{{ dialogTitle }}</div>
+  <div class="command-menu-mask ed-modal-mask whiteboard-editor-mask" @click.self="onCancel">
+    <div class="whiteboard-editor-dialog ed-modal-panel ed-modal-panel--wide" :class="{ 'is-fullscreen': isFullscreen }" @click.stop>
+      <div class="whiteboard-editor-head ed-modal-header">
+        <div class="whiteboard-editor-head-top ed-modal-header__top">
+          <div class="ed-modal-header__stack">
+            <div class="whiteboard-editor-title ed-modal-title">{{ dialogTitle }}</div>
+            <div class="ed-modal-subtitle">统一的编辑外壳，保留 Excalidraw 画布能力与保存流程。</div>
+          </div>
           <button
             type="button"
             class="btn ghost whiteboard-fullscreen-btn"
@@ -217,22 +220,36 @@ onBeforeUnmount(() => {
             {{ fullscreenButtonText }}
           </button>
         </div>
-        <input
-          v-model="titleInput"
-          class="command-input whiteboard-title-input"
-          type="text"
-          placeholder="白板标题"
-          :disabled="saving"
-        />
       </div>
 
-      <div class="whiteboard-editor-body">
-        <div ref="hostRef" class="whiteboard-editor-host"></div>
+      <div class="whiteboard-editor-body ed-modal-body">
+        <section class="ed-modal-section whiteboard-meta-panel">
+          <div class="ed-modal-section__title">白板信息</div>
+          <div class="ed-modal-section__body">
+            <label class="ed-modal-field">
+              <span class="ed-modal-field__label">白板标题</span>
+              <input
+                v-model="titleInput"
+                class="command-input ed-modal-input whiteboard-title-input"
+                type="text"
+                placeholder="白板标题"
+                :disabled="saving"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section class="ed-modal-section whiteboard-canvas-panel">
+          <div class="ed-modal-section__title">画布</div>
+          <div class="whiteboard-editor-host-wrap">
+            <div ref="hostRef" class="whiteboard-editor-host"></div>
+          </div>
+        </section>
       </div>
 
-      <p v-if="error" class="whiteboard-editor-error">{{ error }}</p>
+      <p v-if="error" class="whiteboard-editor-error ed-modal-note">{{ error }}</p>
 
-      <div class="whiteboard-editor-actions">
+      <div class="whiteboard-editor-actions ed-modal-actions">
         <button type="button" class="btn ghost" :disabled="saving" @click="onCancel">取消</button>
         <button type="button" class="btn primary" :disabled="saving" @click="onConfirm">{{ confirmText }}</button>
       </div>
@@ -242,16 +259,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .whiteboard-editor-mask {
-  z-index: 340;
+  z-index: 380;
 }
 
 .whiteboard-editor-dialog {
   width: min(1100px, calc(100vw - 24px));
   height: min(780px, calc(100vh - 28px));
-  background: #fff;
-  border: 1px solid #d8e2ee;
-  border-radius: 14px;
-  box-shadow: 0 18px 42px rgba(18, 33, 52, 0.28);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -266,41 +279,44 @@ onBeforeUnmount(() => {
 }
 
 .whiteboard-editor-head {
-  padding: 12px 14px;
-  border-bottom: 1px solid #e2eaf5;
-  display: grid;
-  gap: 8px;
-  background: linear-gradient(180deg, #f9fbff, #f4f8ff);
+  padding: 0;
 }
 
 .whiteboard-editor-head-top {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.whiteboard-editor-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #2a415e;
 }
 
 .whiteboard-fullscreen-btn {
-  height: 30px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 14px;
   border-radius: 999px;
   font-size: 12px;
-}
-
-.whiteboard-title-input {
-  max-width: 360px;
 }
 
 .whiteboard-editor-body {
   flex: 1;
   min-height: 0;
-  background: #f4f7fc;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.whiteboard-meta-panel {
+  padding: 14px;
+}
+
+.whiteboard-canvas-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+}
+
+.whiteboard-editor-host-wrap {
+  min-height: 0;
+  flex: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(241, 243, 252, 0.92), rgba(251, 252, 255, 0.96));
 }
 
 .whiteboard-editor-host {
@@ -310,18 +326,9 @@ onBeforeUnmount(() => {
 
 .whiteboard-editor-error {
   margin: 0;
-  padding: 10px 14px 0;
-  color: #c1383c;
-  font-size: 12px;
 }
 
 .whiteboard-editor-actions {
-  display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 10px 14px 14px;
-  border-top: 1px solid #e2eaf5;
-  background: #fff;
 }
 </style>
-
