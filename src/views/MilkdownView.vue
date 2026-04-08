@@ -2117,10 +2117,6 @@ onBeforeUnmount(() => {
 
     <div class="milk-workbench editorial-workbench" data-layout-slot="workbench">
       <section class="play-pane play-pane-editor editorial-pane">
-        <header class="play-pane-head">
-          <h3>Visual Editor</h3>
-          <span>{{ activeThemeClass }}</span>
-        </header>
         <div class="play-editor-shell" :class="activeThemeClass">
           <div ref="host" class="playground-host"></div>
         </div>
@@ -2268,37 +2264,3 @@ onBeforeUnmount(() => {
     @save="saveMindmap"
   />
 </template>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

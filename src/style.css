@@ -2016,6 +2016,12 @@ body {
   background: #ffffff;
 }
 
+.play-pane-editor {
+  border: 0;
+  background: #ffffff;
+  box-shadow: 0 14px 36px rgba(20, 32, 52, 0.08);
+}
+
 .play-pane-head {
   height: 52px;
   padding: 0 16px;
@@ -2037,6 +2043,10 @@ body {
 
 .play-editor-shell {
   background: #ffffff;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 0 !important;
+  box-shadow: 0 18px 42px rgba(17, 31, 53, 0.1);
 }
 
 .playground-host .milkdown {
@@ -2045,6 +2055,8 @@ body {
 
 .playground-host .milkdown .editor {
   padding: 28px 0 46px;
+  border: 0 !important;
+  outline: 0 !important;
 }
 
 .playground-host .milkdown .ProseMirror {
@@ -2052,8 +2064,10 @@ body {
   margin: 0 auto;
   padding: 54px 62px 70px;
   background: #ffffff;
+  border: 0 !important;
+  outline: 0 !important;
   border-radius: 22px;
-  box-shadow: 0 1px 0 rgba(219, 224, 236, 0.9);
+  box-shadow: 0 16px 38px rgba(19, 33, 54, 0.09);
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 16px;
   line-height: 1.7;

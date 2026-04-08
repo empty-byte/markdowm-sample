@@ -259,15 +259,16 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .whiteboard-editor-mask {
-  z-index: 380;
+  z-index: 1300;
 }
 
 .whiteboard-editor-dialog {
-  width: min(1100px, calc(100vw - 24px));
-  height: min(780px, calc(100vh - 28px));
+  width: min(1180px, calc(100vw - 32px));
+  height: min(820px, calc(100vh - 32px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .whiteboard-editor-dialog.is-fullscreen {
@@ -286,6 +287,11 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
+.whiteboard-editor-title {
+  line-height: 1.25;
+  padding-left: 2px;
+}
+
 .whiteboard-fullscreen-btn {
   height: 34px;
   padding: 0 14px;
@@ -298,30 +304,42 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
 }
 
 .whiteboard-meta-panel {
-  padding: 14px;
+  padding: 12px;
 }
 
 .whiteboard-canvas-panel {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  padding: 12px;
 }
 
 .whiteboard-editor-host-wrap {
   min-height: 0;
   flex: 1;
+  min-height: 460px;
   border-radius: 16px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(241, 243, 252, 0.92), rgba(251, 252, 255, 0.96));
+  border: 1px solid color-mix(in srgb, var(--ed-dialog-border, #c7d2e3) 78%, white);
 }
 
 .whiteboard-editor-host {
   width: 100%;
   height: 100%;
+}
+
+:deep(.whiteboard-editor-host .excalidraw) {
+  width: 100%;
+  height: 100%;
+}
+
+:deep(.whiteboard-editor-host .excalidraw .layer-ui__wrapper) {
+  border-radius: 12px;
 }
 
 .whiteboard-editor-error {
