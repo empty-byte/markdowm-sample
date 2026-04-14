@@ -799,45 +799,6 @@ function captureLiveSvgPreviewDataUrl(): string {
 }
 
 /**
- * Handle hasRenderableCanvas logic.
- * @returns Return value.
- */
-function hasRenderableCanvas(): boolean {
-  const host = hostRef.value
-  if (!host) return false
-  const svg = host.querySelector('svg')
-  if (!(svg instanceof SVGSVGElement)) return false
-  const nodeLikeCount = svg.querySelectorAll('g, foreignObject, path, rect, circle, text').length
-  return nodeLikeCount > 8
-}
-
-/**
- * Handle forceReflowAndFit logic.
- */
-function forceReflowAndFit() {
-  if (!mindMap) return
-
-  const maybeResizable = mindMap as unknown as {
-    resize?: () => void
-    render?: (callback?: () => void) => void
-  }
-
-  try {
-    maybeResizable.resize?.()
-  } catch {
-    // ignore
-  }
-
-  try {
-    maybeResizable.render?.(() => {
-      fitToView()
-    })
-  } catch {
-    fitToView()
-  }
-}
-
-/**
  * Handle waitForMindmapRenderReady logic.
  * @returns Return value.
  */
@@ -1519,17 +1480,6 @@ onMounted(() => {
     requestAnimationFrame(() => {
       fitToView()
     })
-    // Ensure canvas is laid out before first paint; fallback to default nodes if render is empty.
-    nextTick(() => {
-      requestAnimationFrame(() => {
-        forceReflowAndFit()
-        window.setTimeout(() => {
-          if (!mindMap || hasRenderableCanvas()) return
-          mindMap.setData(createDefaultRoot())
-          forceReflowAndFit()
-        }, 120)
-      })
-    })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '思维导图初始化失败'
   }
@@ -1755,7 +1705,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .mindmap-editor-mask {
-  z-index: 1300;
+  z-index: 340;
 }
 
 .mindmap-editor-dialog {
@@ -1940,7 +1890,6 @@ onBeforeUnmount(() => {
   position: relative;
   min-width: 0;
   min-height: 0;
-  height: 100%;
 }
 
 .mindmap-canvas-wrap.is-drop-active::after {
@@ -1956,7 +1905,6 @@ onBeforeUnmount(() => {
 .mindmap-editor-host {
   width: 100%;
   height: 100%;
-  min-height: 320px;
 }
 
 .mindmap-drop-hint {

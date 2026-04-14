@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+﻿<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { editorViewCtx } from '@milkdown/core'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { collab, collabServiceCtx } from '@milkdown/plugin-collab'
@@ -16,6 +16,7 @@ import createCommentAnchorHighlightPlugin, {
 import { addComment, removeComment, type EditorComment } from '../features/editor-enhance/comments'
 import {
   createSnapshot,
+  findSnapshot,
   removeSnapshot,
   type HistorySnapshot,
 } from '../features/editor-enhance/history'
@@ -58,13 +59,8 @@ import createFlowchartNodeViewPlugin from '../features/editor-enhance/flowchart-
 import createMindmapNodeViewPlugin from '../features/editor-enhance/mindmap-node-view'
 import WhiteboardExcalidrawDialog from '../components/WhiteboardExcalidrawDialog.vue'
 import FlowchartLogicDialog from '../components/FlowchartLogicDialog.vue'
+import MindmapSimpleDialog from '../components/MindmapSimpleDialog.vue'
 import EmbedWebDialog from '../components/EmbedWebDialog.vue'
-import CommentPanel from '../components/CommentPanel.vue'
-import HistoryPanel from '../components/HistoryPanel.vue'
-
-const MindmapSimpleDialog = defineAsyncComponent(
-  () => import('../components/MindmapSimpleDialog.vue')
-)
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 type ThemeKind = 'nord' | 'frame' | 'classic'
@@ -73,6 +69,11 @@ interface CrepeFeatureItem {
   key: CrepeFeature
   label: string
   description: string
+}
+
+interface CapabilitySection {
+  title: string
+  items: string[]
 }
 
 interface PaletteAction {
@@ -123,6 +124,12 @@ interface CollaboratorPresence extends CollaboratorIdentity {
   isLocal: boolean
 }
 
+const themeOptions: Array<{ value: ThemeKind; label: string }> = [
+  { value: 'nord', label: 'Nord' },
+  { value: 'frame', label: 'Frame' },
+  { value: 'classic', label: 'Classic' },
+]
+
 const crepeFeatureItems: CrepeFeatureItem[] = [
   {
     key: CrepeFeature.Toolbar,
@@ -167,7 +174,7 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   {
     key: CrepeFeature.Latex,
     label: 'Latex',
-    description: '行内与块级数学公式支持',
+    description: '行内与块级数学公式',
   },
   {
     key: CrepeFeature.Placeholder,
@@ -176,26 +183,69 @@ const crepeFeatureItems: CrepeFeatureItem[] = [
   },
 ]
 
-const initialMarkdown = `# Q4 Content Strategy & Global Distribution
+const capabilitySections: CapabilitySection[] = [
+  {
+    title: 'Component',
+    items: ['Code Block', 'Image Block', 'Image Inline', 'Link Tooltip', 'List Item Block', 'Table Block'],
+  },
+  {
+    title: 'Preset',
+    items: ['Commonmark', 'GFM'],
+  },
+  {
+    title: 'Plugin',
+    items: ['Listener', 'History', 'Cursor', 'Tooltip', 'Slash', 'Block', 'Indent', 'Trailing', 'Upload', 'Clipboard', 'Collab'],
+  },
+  {
+    title: 'Editor',
+    items: ['Crepe'],
+  },
+  {
+    title: 'Framework',
+    items: ['Core', 'Ctx', 'Utils', 'Transformer'],
+  },
+]
 
-## 1. Executive Overview
+const initialMarkdown = `# Milkdown Playground v7.19.2
 
-In the evolving digital landscape, our editorial mission remains clear: to synthesize complex information into authoritative narratives. This quarter, we focus on **omni-channel synchronicity**, ensuring our core messaging remains consistent across whitepapers, social snippets, and interactive case studies.
+👋 Welcome to Milkdown. We are so glad to see you here!
 
-## 2. Core Methodology
+💬 Try editing on the **left side**, or directly edit markdown on the right.
 
-Our approach is divided into three distinct phases to ensure quality and scalability:
+> ⚠ Not the right side!
+>
+> Please try something on the left side.
 
-1. Deep Research Phase
-2. Iterative Drafting
-3. Refinement & Polishing
+![Polar Bear](https://images.unsplash.com/photo-1589656966895-2f33e7653819?auto=format&fit=crop&w=1200&q=80)
+
+Hello by a polar bear
+
+## Feature Overview
+
+| Feature | Example | Description |
+| --- | --- | --- |
+| Theme | Nord / Frame / Classic | Switch editor visual theme |
+| Plugin | Slash / History / Collab | Extend behaviors |
+| Component | Toolbar / Table / Image | Rich block editing |
+| Syntax | GFM / Latex | Markdown-first editing |
+
+### Playground Shortcuts
+
+- Type "/" in editor to open slash menu
+- Use selected text to trigger floating toolbar
+- Press Ctrl+K to open feature palette
+
+\`\`\`ts
+import { Crepe } from '@milkdown/crepe'
+import '@milkdown/crepe/theme/common/style.css'
+
+const crepe = new Crepe({ root: '#app' })
+await crepe.create()
+\`\`\`
 `
 
 const host = ref<HTMLDivElement | null>(null)
-const commentPanelRef = ref<{
-  focusInput: () => void
-  scrollCommentIntoView: (id: string) => void
-} | null>(null)
+const commentInputRef = ref<HTMLTextAreaElement | null>(null)
 const paletteInputRef = ref<HTMLInputElement | null>(null)
 const status = ref<ConnectionStatus>('disconnected')
 const markdown = ref(initialMarkdown)
@@ -211,8 +261,8 @@ const paletteVisible = ref(false)
 const paletteQuery = ref('')
 const paletteIndex = ref(0)
 const markdownPaneVisible = ref(false)
-const commentDrawerOpen = ref(true)
-const historyModalOpen = ref(false)
+const commentsCollapsed = ref(false)
+const historyCollapsed = ref(false)
 const commentDraft = ref('')
 const snapshotLabel = ref('')
 const comments = ref<EditorComment[]>([])
@@ -221,6 +271,7 @@ const selectedRange = ref<SelectedQuoteRange | null>(null)
 const activeCommentId = ref<string | null>(null)
 const activeCommentRange = ref<CommentHighlightRange | null>(null)
 const activeSnapshotId = ref<string | null>(null)
+const commentItemRefs = new Map<string, HTMLElement>()
 
 const embedDialogVisible = ref(false)
 const embedDialogMode = ref<'insert' | 'edit'>('insert')
@@ -305,8 +356,6 @@ const commentToolbarIcon = `
   </svg>
 `
 
-const HISTORY_MODAL_OPEN_EVENT = 'open-history-modal'
-
 const commentHighlight = $prose(() =>
   createCommentAnchorHighlightPlugin({
     getRanges: () => comments.value.map((item) => ({ from: item.from, to: item.to })),
@@ -324,6 +373,10 @@ const flowchartNodeView = $prose(() => createFlowchartNodeViewPlugin())
 const mindmapNodeView = $prose(() => createMindmapNodeViewPlugin())
 
 const activeThemeClass = computed(() => `milk-theme-${theme.value}${darkMode.value ? '-dark' : ''}`)
+
+const enabledFeatureCount = computed(() =>
+  crepeFeatureItems.filter((item) => featureFlags.value[item.key]).length
+)
 
 const markdownLineNumbers = computed(() =>
   markdown.value
@@ -390,24 +443,6 @@ const paletteActions = computed<PaletteAction[]>(() => {
       },
     },
     {
-      id: 'toggle-markdown-pane',
-      group: 'Editor',
-      label: `${markdownPaneVisible.value ? '隐藏' : '显示'} Markdown 面板`,
-      description: '切换右侧 Markdown 面板显示',
-      run: () => {
-        markdownPaneVisible.value = !markdownPaneVisible.value
-      },
-    },
-    {
-      id: 'toggle-auto-sync',
-      group: 'Editor',
-      label: `${autoSyncMarkdown.value ? '关闭' : '开启'} Markdown 自动同步`,
-      description: '控制右侧 Markdown 输入时是否自动应用到左侧',
-      run: () => {
-        autoSyncMarkdown.value = !autoSyncMarkdown.value
-      },
-    },
-    {
       id: 'sync-pane',
       group: 'Editor',
       label: '将右侧 Markdown 应用到左侧',
@@ -438,7 +473,7 @@ const paletteActions = computed<PaletteAction[]>(() => {
       id: 'collab-connect',
       group: 'Collab',
       label: '连接协同服务',
-      description: '连接到 Hocuspocus WebSocket',
+      description: '连接 Hocuspocus WebSocket',
       run: () => {
         connectCollab()
       },
@@ -494,69 +529,32 @@ const filteredPaletteActions = computed(() => {
   })
 })
 
+const activeComment = computed(() =>
+  comments.value.find((item) => item.id === activeCommentId.value) ?? null
+)
+
+const activeSnapshot = computed(() =>
+  activeSnapshotId.value ? findSnapshot(snapshots.value, activeSnapshotId.value) ?? null : null
+)
+
+const commentCountLabel = computed(() => `${comments.value.length} 条评论`)
+const snapshotCountLabel = computed(() => `${snapshots.value.length} 条历史记录`)
 const collaboratorCountLabel = computed(() => {
   if (status.value !== 'connected') return '协同未连接'
   return `${collaborators.value.length} 位协作者在线`
 })
 
-/**
- * Handle openCommentDrawer logic.
- */
-function openCommentDrawer() {
-  // Make the comment rail expand into the full drawer.
-  commentDrawerOpen.value = true
-}
+const selectedQuotePreview = computed(() => selectedRange.value?.quote || '先在正文选中一段文本')
 
-/**
- * Handle closeCommentDrawer logic.
- */
-function closeCommentDrawer() {
-  // Collapse the drawer back to the Feishu-style rail.
-  commentDrawerOpen.value = false
-}
 
-/**
- * Handle toggleCommentDrawer logic.
- */
-function toggleCommentDrawer() {
-  // One control toggles between the collapsed rail and the expanded drawer.
-  if (commentDrawerOpen.value) closeCommentDrawer()
-  else openCommentDrawer()
-}
-
-/**
- * Handle openHistoryModal logic.
- */
-function openHistoryModal() {
-  // History is now surfaced from the top bar into a modal shell.
-  historyModalOpen.value = true
-}
-
-/**
- * Handle closeHistoryModal logic.
- */
-function closeHistoryModal() {
-  // Keep the snapshot state intact; only the modal visibility changes.
-  historyModalOpen.value = false
-}
-
-/**
- * Handle getFeatureFlags logic.
- */
 function getFeatureFlags() {
-  // Translate UI toggle map into Crepe feature config shape.
   return crepeFeatureItems.reduce((acc, item) => {
     acc[item.key] = featureFlags.value[item.key]
     return acc
   }, {} as Partial<Record<CrepeFeature, boolean>>)
 }
 
-/**
- * Handle getEditorView logic.
- * @returns Return value.
- */
 function getEditorView(): EditorView | null {
-  // Access current ProseMirror view through Milkdown context.
   if (!crepe) return null
 
   let view: EditorView | null = null
@@ -567,13 +565,21 @@ function getEditorView(): EditorView | null {
   return view
 }
 
-/**
- * Handle isEditorCommentRecord logic.
- * @param value - Parameter.
- * @returns Return value.
- */
+function setCommentItemRef(id: string, element: unknown) {
+  if (element instanceof HTMLElement) {
+    commentItemRefs.set(id, element)
+    return
+  }
+
+  commentItemRefs.delete(id)
+}
+
+function scrollCommentIntoView(id: string) {
+  const element = commentItemRefs.get(id)
+  element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
 function isEditorCommentRecord(value: unknown): value is EditorComment {
-  // Runtime guard for data coming from shared Yjs state.
   if (!value || typeof value !== 'object') return false
 
   const item = value as EditorComment
@@ -588,13 +594,7 @@ function isEditorCommentRecord(value: unknown): value is EditorComment {
   )
 }
 
-/**
- * Handle isHistorySnapshotRecord logic.
- * @param value - Parameter.
- * @returns Return value.
- */
 function isHistorySnapshotRecord(value: unknown): value is HistorySnapshot {
-  // Runtime guard for snapshot list synced from Yjs/local state.
   if (!value || typeof value !== 'object') return false
 
   const item = value as HistorySnapshot
@@ -606,13 +606,7 @@ function isHistorySnapshotRecord(value: unknown): value is HistorySnapshot {
   )
 }
 
-/**
- * Handle isCollaboratorIdentity logic.
- * @param value - Parameter.
- * @returns Return value.
- */
 function isCollaboratorIdentity(value: unknown): value is CollaboratorIdentity {
-  // Awareness payload may be arbitrary; validate before rendering presence UI.
   if (!value || typeof value !== 'object') return false
 
   const item = value as CollaboratorIdentity
@@ -623,51 +617,29 @@ function isCollaboratorIdentity(value: unknown): value is CollaboratorIdentity {
   )
 }
 
-/**
- * Handle syncCommentsFromSharedState logic.
- */
 function syncCommentsFromSharedState() {
-  // Pull latest comments from Y.Array and drop invalid records.
   comments.value = yComments.toArray().filter(isEditorCommentRecord)
 }
 
-/**
- * Handle syncSnapshotsFromSharedState logic.
- */
 function syncSnapshotsFromSharedState() {
-  // Pull latest snapshots from Y.Array and drop invalid records.
   snapshots.value = ySnapshots.toArray().filter(isHistorySnapshotRecord)
 }
 
-/**
- * Handle replaceSharedComments logic.
- * @param next - Parameter.
- */
 function replaceSharedComments(next: EditorComment[]) {
-  // Replace whole list in one transaction to keep peer updates atomic.
   ydoc.transact(() => {
     yComments.delete(0, yComments.length)
     if (next.length) yComments.insert(0, next)
   })
 }
 
-/**
- * Handle replaceSharedSnapshots logic.
- * @param next - Parameter.
- */
 function replaceSharedSnapshots(next: HistorySnapshot[]) {
-  // Replace whole list in one transaction to keep peer updates atomic.
   ydoc.transact(() => {
     ySnapshots.delete(0, ySnapshots.length)
     if (next.length) ySnapshots.insert(0, next)
   })
 }
 
-/**
- * Handle refreshCollaborators logic.
- */
 function refreshCollaborators() {
-  // Rebuild collaborator list from awareness states and keep local user on top.
   const awarenessStates = provider.awareness?.getStates()
   if (!awarenessStates) {
     collaborators.value = []
@@ -695,20 +667,12 @@ function refreshCollaborators() {
   })
 }
 
-/**
- * Handle syncLocalAwareness logic.
- */
 function syncLocalAwareness() {
-  // Publish current user identity to awareness channel.
   provider.awareness?.setLocalStateField('user', localCollaborator)
   refreshCollaborators()
 }
 
-/**
- * Handle getCurrentMarkdownSnapshot logic.
- */
 function getCurrentMarkdownSnapshot() {
-  // Read markdown from editor when available; fallback to reactive pane value.
   if (!crepe) return markdown.value
 
   try {
@@ -718,11 +682,7 @@ function getCurrentMarkdownSnapshot() {
   }
 }
 
-/**
- * Handle serializeSnapshotPayload logic.
- */
 function serializeSnapshotPayload() {
-  // Snapshot stores both markdown and comments to support full rollback.
   const latestMarkdown = getCurrentMarkdownSnapshot()
 
   if (latestMarkdown !== markdown.value) {
@@ -737,13 +697,7 @@ function serializeSnapshotPayload() {
   return JSON.stringify(payload)
 }
 
-/**
- * Handle parseSnapshotPayload logic.
- * @param content - Parameter.
- * @returns Return value.
- */
 function parseSnapshotPayload(content: string): SnapshotPayload {
-  // Backward compatible parser: JSON payload first, plain markdown fallback.
   try {
     const parsed = JSON.parse(content) as Partial<SnapshotPayload>
     if (typeof parsed.markdown === 'string') {
@@ -764,20 +718,26 @@ function parseSnapshotPayload(content: string): SnapshotPayload {
   }
 }
 
-/**
- * Handle getDefaultSnapshotLabel logic.
- */
+function getSnapshotPreview(snapshot: HistorySnapshot) {
+  const { markdown: snapshotMarkdown } = parseSnapshotPayload(snapshot.content)
+  const lines = snapshotMarkdown
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) return '空白快照'
+  if (lines.length === 1) return lines[0]
+
+  const firstLine = lines[0]
+  const lastLine = lines[lines.length - 1]
+  return firstLine === lastLine ? firstLine : `${firstLine} / ${lastLine}`
+}
+
 function getDefaultSnapshotLabel() {
-  // Human-friendly incremental default label for manual snapshots.
   return `手动快照 ${snapshots.value.length + 1}`
 }
 
-/**
- * Handle findCommentByPosition logic.
- * @param pos - Parameter.
- */
 function findCommentByPosition(pos: number) {
-  // Resolve editor click position to its owning comment anchor range.
   return (
     comments.value.find((item) => {
       const from = Math.min(item.from, item.to)
@@ -787,38 +747,28 @@ function findCommentByPosition(pos: number) {
   )
 }
 
-/**
- * Handle activateCommentById logic.
- * @param id - Parameter.
- */
 function activateCommentById(id: string) {
-  // Activate comment card and sync highlight state in editor.
   const comment = comments.value.find((item) => item.id === id)
   if (!comment) return
-
-  openCommentDrawer()
 
   activeCommentId.value = comment.id
   updateActiveCommentRange()
 
   void nextTick(() => {
-    commentPanelRef.value?.scrollCommentIntoView(comment.id)
+    scrollCommentIntoView(comment.id)
   })
 }
 
-/**
- * Handle refreshCommentHighlight logic.
- */
+function focusCommentInput() {
+  commentInputRef.value?.focus()
+  commentInputRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+
 function refreshCommentHighlight() {
-  // Trigger ProseMirror decoration refresh for comment anchor marks.
   crepe?.editor.action(forceUpdate())
 }
 
-/**
- * Handle syncSelectionState logic.
- */
 function syncSelectionState(selection?: Selection) {
-  // Convert current editor selection into a quote payload for comment creation.
   const view = getEditorView()
   const currentSelection = selection ?? view?.state.selection
 
@@ -843,22 +793,22 @@ function syncSelectionState(selection?: Selection) {
   }
 }
 
-/**
- * Handle updateActiveCommentRange logic.
- */
+function formatTime(time: number) {
+  return new Date(time).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function updateActiveCommentRange() {
-  // Keep active highlight range aligned with currently selected comment.
   const current = comments.value.find((item) => item.id === activeCommentId.value)
   activeCommentRange.value = current ? { from: current.from, to: current.to } : null
   refreshCommentHighlight()
 }
 
-/**
- * Handle focusComment logic.
- * @param comment - Parameter.
- */
 function focusComment(comment: EditorComment) {
-  // Jump editor selection to comment anchor and bring sidebar card into view.
   activateCommentById(comment.id)
 
   crepe?.editor.action((ctx) => {
@@ -872,18 +822,12 @@ function focusComment(comment: EditorComment) {
   })
 
   void nextTick(() => {
-    commentPanelRef.value?.scrollCommentIntoView(comment.id)
+    scrollCommentIntoView(comment.id)
   })
 }
 
-/**
- * Handle submitComment logic.
- */
 function submitComment() {
-  // Validate draft + selection, append comment, then focus newly created item.
   if (!selectedRange.value) return
-
-  openCommentDrawer()
 
   const text = commentDraft.value.trim()
   if (!text) return
@@ -901,16 +845,10 @@ function submitComment() {
   focusComment(next[0])
 }
 
-/**
- * Handle beginCommentFromSelection logic.
- */
 function beginCommentFromSelection() {
-  // Prepare highlight for current selection and move focus to comment input.
   syncSelectionState()
   if (!selectedRange.value) return
 
-
-  openCommentDrawer()
   activeCommentId.value = null
   activeCommentRange.value = {
     from: selectedRange.value.from,
@@ -919,15 +857,11 @@ function beginCommentFromSelection() {
   refreshCommentHighlight()
 
   void nextTick(() => {
-    commentPanelRef.value?.focusInput()
+    focusCommentInput()
   })
 }
 
-/**
- * Handle createHistorySnapshot logic.
- */
 function createHistorySnapshot() {
-  // Persist current markdown + comments as a new manual snapshot.
   const label = snapshotLabel.value.trim() || getDefaultSnapshotLabel()
   const next = createSnapshot(snapshots.value, {
     label,
@@ -939,12 +873,7 @@ function createHistorySnapshot() {
   snapshotLabel.value = ''
 }
 
-/**
- * Handle restoreHistorySnapshot logic.
- * @param snapshot - Parameter.
- */
 async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
-  // Restore both editor content and comment state from selected snapshot payload.
   const payload = parseSnapshotPayload(snapshot.content)
   activeSnapshotId.value = snapshot.id
   snapshotLabel.value = snapshot.label
@@ -960,20 +889,11 @@ async function restoreHistorySnapshot(snapshot: HistorySnapshot) {
   refreshCommentHighlight()
 }
 
-/**
- * Handle selectHistorySnapshot logic.
- * @param snapshot - Parameter.
- */
 async function selectHistorySnapshot(snapshot: HistorySnapshot) {
   await restoreHistorySnapshot(snapshot)
 }
 
-/**
- * Handle deleteHistorySnapshot logic.
- * @param id - Parameter.
- */
 function deleteHistorySnapshot(id: string) {
-  // Remove snapshot and keep active pointer valid.
   replaceSharedSnapshots(removeSnapshot(snapshots.value, id))
 
   if (activeSnapshotId.value === id) {
@@ -981,12 +901,7 @@ function deleteHistorySnapshot(id: string) {
   }
 }
 
-/**
- * Handle deleteComment logic.
- * @param id - Parameter.
- */
 function deleteComment(id: string) {
-  // Remove comment and update active highlight fallback.
   replaceSharedComments(removeComment(comments.value, id))
 
   if (activeCommentId.value === id) {
@@ -995,22 +910,14 @@ function deleteComment(id: string) {
   }
 }
 
-/**
- * Handle destroyEditor logic.
- */
 async function destroyEditor() {
-  // Destroy current Crepe instance before full rebuild/theme reconfiguration.
   if (!crepe) return
   const current = crepe
   crepe = null
   await current.destroy()
 }
 
-/**
- * Handle rebuildEditor logic.
- */
 async function rebuildEditor(seed?: string) {
-  // Recreate editor with latest feature toggles and custom block/toolbar hooks.
   if (!host.value) return
 
   const version = ++rebuildVersion
@@ -1119,14 +1026,7 @@ async function rebuildEditor(seed?: string) {
   })
 
   crepe = instance
-  const createdMarkdown = instance.getMarkdown()
-  markdown.value = createdMarkdown
-
-  if (!createdMarkdown.trim() && nextMarkdown.trim()) {
-    await syncEditorMarkdown(nextMarkdown)
-    markdown.value = instance.getMarkdown()
-  }
-
+  markdown.value = instance.getMarkdown()
   syncSelectionState()
   updateActiveCommentRange()
 
@@ -1136,22 +1036,13 @@ async function rebuildEditor(seed?: string) {
   isRebuilding.value = false
 }
 
-/**
- * Handle applyMarkdownFromPane logic.
- */
 async function applyMarkdownFromPane() {
-  // Manually apply right markdown pane content into visual editor.
   if (!crepe || syncingFromEditor) return
 
   await syncEditorMarkdown(markdown.value)
 }
 
-/**
- * Handle syncEditorMarkdown logic.
- * @param nextMarkdown - Parameter.
- */
 async function syncEditorMarkdown(nextMarkdown: string) {
-  // Prefer collab template update path; fallback to local replaceAll.
   if (!crepe || syncingFromEditor) return
 
   syncingFromPane = true
@@ -1170,11 +1061,7 @@ async function syncEditorMarkdown(nextMarkdown: string) {
   updateActiveCommentRange()
 }
 
-/**
- * Handle scheduleApplyMarkdownFromPane logic.
- */
 function scheduleApplyMarkdownFromPane() {
-  // Debounce markdown pane typing to avoid expensive per-keystroke updates.
   if (!autoSyncMarkdown.value) return
   if (syncTimer) clearTimeout(syncTimer)
 
@@ -1183,9 +1070,6 @@ function scheduleApplyMarkdownFromPane() {
   }, 120)
 }
 
-/**
- * Handle resetSampleMarkdown logic.
- */
 async function resetSampleMarkdown() {
   markdown.value = initialMarkdown
   await applyMarkdownFromPane()
@@ -1195,11 +1079,7 @@ async function resetSampleMarkdown() {
   updateActiveCommentRange()
 }
 
-/**
- * Handle copyMarkdown logic.
- */
 async function copyMarkdown() {
-  // Clipboard helper for quick export/debug usage.
   try {
     await navigator.clipboard.writeText(markdown.value)
     copied.value = true
@@ -1212,30 +1092,18 @@ async function copyMarkdown() {
   }
 }
 
-/**
- * Handle connectCollab logic.
- */
 function connectCollab() {
-  // Enable desired collab state; watch() handles actual socket connect.
   collabWanted.value = true
   syncLocalAwareness()
 }
 
-/**
- * Handle disconnectCollab logic.
- */
 function disconnectCollab() {
-  // Clear awareness + mark collab as off for deterministic disconnect flow.
   provider.awareness?.setLocalState(null)
   collabWanted.value = false
   refreshCollaborators()
 }
 
-/**
- * Handle openPalette logic.
- */
 function openPalette() {
-  // Open command palette and focus search input.
   paletteVisible.value = true
   paletteQuery.value = ''
   paletteIndex.value = 0
@@ -1244,41 +1112,24 @@ function openPalette() {
   })
 }
 
-/**
- * Handle closePalette logic.
- */
 function closePalette() {
   paletteVisible.value = false
   paletteQuery.value = ''
   paletteIndex.value = 0
 }
 
-/**
- * Handle movePalette logic.
- * @param step - Parameter.
- */
 function movePalette(step: 1 | -1) {
   const size = filteredPaletteActions.value.length
   if (!size) return
   paletteIndex.value = (paletteIndex.value + step + size) % size
 }
 
-/**
- * Handle runPaletteAction logic.
- * @param item - Parameter.
- */
 function runPaletteAction(item: PaletteAction) {
-  // Execute action and close menu to mirror command palette UX conventions.
   item.run()
   closePalette()
 }
 
-/**
- * Handle onPaletteKeydown logic.
- * @param event - Parameter.
- */
 function onPaletteKeydown(event: KeyboardEvent) {
-  // Keyboard navigation for command menu list.
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     movePalette(1)
@@ -1304,46 +1155,27 @@ function onPaletteKeydown(event: KeyboardEvent) {
   if (current) runPaletteAction(current)
 }
 
+// ── Embed dialog ──
 
-/**
- * Handle openEmbedDialog logic.
- */
 function openEmbedDialog() {
-  // Open insert mode with clean state.
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
   embedDialogVisible.value = true
 }
 
-/**
- * Handle openEmbedEditDialog logic.
- * @param detail - Parameter.
- */
 function openEmbedEditDialog(detail: EmbedEditRequestDetail) {
-  // Open edit mode with node range metadata from NodeView event.
   embedDialogMode.value = 'edit'
   embedEditTarget.value = detail
   embedDialogVisible.value = true
 }
 
-/**
- * Handle closeEmbedDialog logic.
- */
 function closeEmbedDialog() {
-  // Reset dialog state to default insert mode.
   embedDialogVisible.value = false
   embedDialogMode.value = 'insert'
   embedEditTarget.value = null
 }
 
-/**
- * Handle applyEmbedEdit logic.
- * @param detail - Parameter.
- * @param title - Parameter.
- * @param url - Parameter.
- */
 function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: string) {
-  // Replace token text or image node in-place depending on source kind.
   if (!crepe) return
   const token = createEmbedToken(title, url)
 
@@ -1373,12 +1205,7 @@ function applyEmbedEdit(detail: EmbedEditRequestDetail, title: string, url: stri
   })
 }
 
-/**
- * Handle confirmEmbed logic.
- * @param payload - Parameter.
- */
 function confirmEmbed(payload: { url: string; title: string }) {
-  // Shared submit handler for both insert and edit paths.
   const url = payload.url.trim()
   if (!isValidEmbedUrl(url)) return
 
@@ -1406,24 +1233,16 @@ function confirmEmbed(payload: { url: string; title: string }) {
   closeEmbedDialog()
 }
 
-/**
- * Handle onEmbedEditRequest logic.
- * @param event - Parameter.
- */
 function onEmbedEditRequest(event: Event) {
-  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<EmbedEditRequestDetail>
   if (!customEvent.detail) return
   openEmbedEditDialog(customEvent.detail)
 }
 
 
+// ── Whiteboard dialog ──
 
-/**
- * Handle openWhiteboardDialog logic.
- */
 function openWhiteboardDialog() {
-  // Open insert mode with fresh title/scene.
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
   whiteboardEditorTitle.value = '白板'
@@ -1431,12 +1250,7 @@ function openWhiteboardDialog() {
   whiteboardEditorVisible.value = true
 }
 
-/**
- * Handle openWhiteboardEditDialog logic.
- * @param detail - Parameter.
- */
 function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
-  // Load persisted whiteboard scene before opening editor.
   whiteboardEditorMode.value = 'edit'
   whiteboardEditTarget.value = detail
 
@@ -1446,11 +1260,7 @@ function openWhiteboardEditDialog(detail: WhiteboardEditRequestDetail) {
   whiteboardEditorVisible.value = true
 }
 
-/**
- * Handle closeWhiteboardEditor logic.
- */
 function closeWhiteboardEditor() {
-  // Fully clear editor state so stale payload is not reused next time.
   whiteboardEditorVisible.value = false
   whiteboardEditorMode.value = 'insert'
   whiteboardEditTarget.value = null
@@ -1458,13 +1268,7 @@ function closeWhiteboardEditor() {
   whiteboardEditorScene.value = null
 }
 
-/**
- * Handle applyWhiteboardEdit logic.
- * @param detail - Parameter.
- * @param payload - Parameter.
- */
 function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: WhiteboardSavePayload) {
-  // Persist whiteboard record then replace corresponding markdown range.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '白板'
@@ -1505,12 +1309,7 @@ function applyWhiteboardEdit(detail: WhiteboardEditRequestDetail, payload: White
   crepe.editor.action(forceUpdate())
 }
 
-/**
- * Handle saveWhiteboard logic.
- * @param payload - Parameter.
- */
 function saveWhiteboard(payload: WhiteboardSavePayload) {
-  // Route save operation to edit/insert branch.
   const target = whiteboardEditTarget.value
 
   if (whiteboardEditorMode.value === 'edit' && target) {
@@ -1544,23 +1343,15 @@ function saveWhiteboard(payload: WhiteboardSavePayload) {
   closeWhiteboardEditor()
 }
 
-/**
- * Handle onWhiteboardEditRequest logic.
- * @param event - Parameter.
- */
 function onWhiteboardEditRequest(event: Event) {
-  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<WhiteboardEditRequestDetail>
   if (!customEvent.detail) return
   openWhiteboardEditDialog(customEvent.detail)
 }
 
+// ── Flowchart dialog ──
 
-/**
- * Handle openFlowchartDialog logic.
- */
 function openFlowchartDialog() {
-  // Open insert mode with fresh title/scene.
   flowchartEditorMode.value = 'insert'
   flowchartEditTarget.value = null
   flowchartEditorTitle.value = '流程图'
@@ -1568,12 +1359,7 @@ function openFlowchartDialog() {
   flowchartEditorVisible.value = true
 }
 
-/**
- * Handle openFlowchartEditDialog logic.
- * @param detail - Parameter.
- */
 function openFlowchartEditDialog(detail: FlowchartEditRequestDetail) {
-  // Load persisted flowchart scene before opening editor.
   flowchartEditorMode.value = 'edit'
   flowchartEditTarget.value = detail
 
@@ -1583,11 +1369,7 @@ function openFlowchartEditDialog(detail: FlowchartEditRequestDetail) {
   flowchartEditorVisible.value = true
 }
 
-/**
- * Handle closeFlowchartEditor logic.
- */
 function closeFlowchartEditor() {
-  // Fully clear editor state so stale payload is not reused next time.
   flowchartEditorVisible.value = false
   flowchartEditorMode.value = 'insert'
   flowchartEditTarget.value = null
@@ -1595,13 +1377,7 @@ function closeFlowchartEditor() {
   flowchartEditorScene.value = null
 }
 
-/**
- * Handle applyFlowchartEdit logic.
- * @param detail - Parameter.
- * @param payload - Parameter.
- */
 function applyFlowchartEdit(detail: FlowchartEditRequestDetail, payload: FlowchartSavePayload) {
-  // Persist flowchart record then replace corresponding markdown range.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '流程图'
@@ -1644,12 +1420,7 @@ function applyFlowchartEdit(detail: FlowchartEditRequestDetail, payload: Flowcha
   crepe.editor.action(forceUpdate())
 }
 
-/**
- * Handle saveFlowchart logic.
- * @param payload - Parameter.
- */
 function saveFlowchart(payload: FlowchartSavePayload) {
-  // Route save operation to edit/insert branch.
   const target = flowchartEditTarget.value
 
   if (flowchartEditorMode.value === 'edit' && target) {
@@ -1683,24 +1454,16 @@ function saveFlowchart(payload: FlowchartSavePayload) {
   closeFlowchartEditor()
 }
 
-/**
- * Handle onFlowchartEditRequest logic.
- * @param event - Parameter.
- */
 function onFlowchartEditRequest(event: Event) {
-  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<FlowchartEditRequestDetail>
   if (!customEvent.detail) return
   openFlowchartEditDialog(customEvent.detail)
 }
 
 
+// ── Mindmap dialog ──
 
-/**
- * Handle openMindmapDialog logic.
- */
 function openMindmapDialog() {
-  // Open insert mode with fresh title/scene.
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
   mindmapEditorTitle.value = '思维导图'
@@ -1708,12 +1471,7 @@ function openMindmapDialog() {
   mindmapEditorVisible.value = true
 }
 
-/**
- * Handle openMindmapEditDialog logic.
- * @param detail - Parameter.
- */
 function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
-  // Load persisted mindmap scene before opening editor.
   mindmapEditorMode.value = 'edit'
   mindmapEditTarget.value = detail
 
@@ -1723,11 +1481,7 @@ function openMindmapEditDialog(detail: MindmapEditRequestDetail) {
   mindmapEditorVisible.value = true
 }
 
-/**
- * Handle closeMindmapEditor logic.
- */
 function closeMindmapEditor() {
-  // Fully clear editor state so stale payload is not reused next time.
   mindmapEditorVisible.value = false
   mindmapEditorMode.value = 'insert'
   mindmapEditTarget.value = null
@@ -1737,14 +1491,7 @@ function closeMindmapEditor() {
 
 const mindmapTokenPattern = /!\[mindmap:([^\]]*)\]\((mindmap:\/\/[a-zA-Z0-9_-]+)(?:\s+"[^"]*")?\)/g
 
-/**
- * Handle clampMindmapPosition logic.
- * @param value - Parameter.
- * @param maxPos - Parameter.
- * @returns Return value.
- */
 function clampMindmapPosition(value: number, maxPos: number): number {
-  // Guard against invalid/overflow ranges before applying text replacement.
   if (!Number.isFinite(value)) return 0
   const normalized = Math.floor(value)
   if (normalized < 0) return 0
@@ -1752,16 +1499,10 @@ function clampMindmapPosition(value: number, maxPos: number): number {
   return normalized
 }
 
-/**
- * Handle resolveMindmapReplaceRange logic.
- * @param state - Parameter.
- * @param target - Parameter.
- */
 function resolveMindmapReplaceRange(
   state: EditorView['state'],
   target: { from: number; to: number } | null
 ): { from: number; to: number } {
-  // Build a safe replacement range using target range or current selection fallback.
   const maxPos = state.doc.content.size
   const fallbackFrom = state.selection.from
   const fallbackTo = state.selection.to
@@ -1771,16 +1512,10 @@ function resolveMindmapReplaceRange(
   return from <= to ? { from, to } : { from: to, to: from }
 }
 
-/**
- * Handle findMindmapDocTarget logic.
- * @param doc - Parameter.
- * @param id - Parameter.
- */
 function findMindmapDocTarget(
   doc: import('@milkdown/prose/model').Node,
   id: string
 ): { kind: 'token' | 'image'; from: number; to: number } | null {
-  // Find latest token/image range by id to avoid stale edit ranges.
   let found: { kind: 'token' | 'image'; from: number; to: number } | null = null
   const source = createMindmapSource(id)
 
@@ -1816,13 +1551,7 @@ function findMindmapDocTarget(
   return found
 }
 
-/**
- * Handle applyMindmapEdit logic.
- * @param detail - Parameter.
- * @param payload - Parameter.
- */
 function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSavePayload) {
-  // Persist mindmap record and replace current token range with fresh content.
   if (!crepe) return
 
   const normalizedTitle = payload.title.trim() || '思维导图'
@@ -1854,12 +1583,7 @@ function applyMindmapEdit(detail: MindmapEditRequestDetail, payload: MindmapSave
   crepe.editor.action(forceUpdate())
 }
 
-/**
- * Handle saveMindmap logic.
- * @param payload - Parameter.
- */
 function saveMindmap(payload: MindmapSavePayload) {
-  // Route save operation to edit/insert branch.
   const target = mindmapEditTarget.value
 
   if (mindmapEditorMode.value === 'edit' && target) {
@@ -1893,22 +1617,12 @@ function saveMindmap(payload: MindmapSavePayload) {
   closeMindmapEditor()
 }
 
-/**
- * Handle onMindmapEditRequest logic.
- * @param event - Parameter.
- */
 function onMindmapEditRequest(event: Event) {
-  // Bridge custom DOM event from NodeView to Vue dialog flow.
   const customEvent = event as CustomEvent<MindmapEditRequestDetail>
   if (!customEvent.detail) return
   openMindmapEditDialog(customEvent.detail)
 }
-/**
- * Handle onGlobalKeydown logic.
- * @param event - Parameter.
- */
 function onGlobalKeydown(event: KeyboardEvent) {
-  // Global keyboard shortcuts: command palette toggle/close.
   const key = event.key.toLowerCase()
   if ((event.ctrlKey || event.metaKey) && key === 'k') {
     event.preventDefault()
@@ -1917,30 +1631,16 @@ function onGlobalKeydown(event: KeyboardEvent) {
     return
   }
 
-  if (event.key === 'Escape') {
-    if (paletteVisible.value) {
-      closePalette()
-      return
-    }
-
-    if (historyModalOpen.value) {
-      closeHistoryModal()
-      return
-    }
-
-    if (commentDrawerOpen.value) {
-      closeCommentDrawer()
-    }
+  if (event.key === 'Escape' && paletteVisible.value) {
+    closePalette()
   }
 }
 
 watch(activeCommentId, () => {
-  // Active comment changes should immediately refresh editor highlight.
   updateActiveCommentRange()
 })
 
 watch(comments, (items) => {
-  // Keep active comment pointer valid when list updates from local/remote edits.
   if (!items.length) {
     activeCommentId.value = null
     activeCommentRange.value = null
@@ -1961,7 +1661,6 @@ watch(comments, (items) => {
 watch(
   featureFlags,
   () => {
-    // Feature toggles require full editor rebuild because Crepe features are init-time options.
     void rebuildEditor()
   },
   { deep: true }
@@ -1972,7 +1671,6 @@ watch(readonlyMode, (value) => {
 })
 
 watch(collabWanted, (value) => {
-  // Desired collab state switch; connection state UI updates via provider status event.
   if (value) {
     syncLocalAwareness()
     void websocketProvider.connect()
@@ -1994,13 +1692,11 @@ watch(filteredPaletteActions, (items) => {
 })
 
 onMounted(async () => {
-  // Wire global events + Yjs observers, then create initial editor instance.
   window.addEventListener('keydown', onGlobalKeydown)
   window.addEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.addEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
   window.addEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
   window.addEventListener(MINDMAP_EDIT_REQUEST_EVENT, onMindmapEditRequest as EventListener)
-  window.addEventListener(HISTORY_MODAL_OPEN_EVENT, openHistoryModal as EventListener)
   yComments.observe(syncCommentsFromSharedState)
   ySnapshots.observe(syncSnapshotsFromSharedState)
   provider.awareness?.on('change', refreshCollaborators)
@@ -2011,13 +1707,11 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  // Release all listeners/providers/timers to avoid leaks across route changes.
   window.removeEventListener('keydown', onGlobalKeydown)
   window.removeEventListener(EMBED_EDIT_REQUEST_EVENT, onEmbedEditRequest as EventListener)
   window.removeEventListener(WHITEBOARD_EDIT_REQUEST_EVENT, onWhiteboardEditRequest as EventListener)
   window.removeEventListener(FLOWCHART_EDIT_REQUEST_EVENT, onFlowchartEditRequest as EventListener)
   window.removeEventListener(MINDMAP_EDIT_REQUEST_EVENT, onMindmapEditRequest as EventListener)
-  window.removeEventListener(HISTORY_MODAL_OPEN_EVENT, openHistoryModal as EventListener)
 
   if (syncTimer) clearTimeout(syncTimer)
   if (copyTimer) clearTimeout(copyTimer)
@@ -2034,115 +1728,241 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="page milk-playground-page" :class="{ 'side-drawer-open': commentDrawerOpen, 'side-drawer-closed': !commentDrawerOpen, 'history-modal-open': historyModalOpen }">
-    <header class="editor-hero">
-      <div class="editor-last-modified">
-        <span class="material-symbols-outlined" aria-hidden="true">calendar_today</span>
-        <span>LAST MODIFIED: OCT 24, 2024</span>
-      </div>
+  <section class="page milk-playground-page">
+    <h1>Milkdown Playground（评论 + 历史记录版）</h1>
+    <p class="subtitle">
+      保留 Milkdown 单方案，并补齐飞书式评论与手动历史记录：选中文本评论、锚点定位、创建快照、按版本还原。
+    </p>
 
-      <h1 class="editor-title">
-        Q4 Content Strategy &
-        <span>Global Distribution</span>
-      </h1>
+    <div class="toolbar">
+      <label class="check-inline">
+        主题
+        <select v-model="theme" class="mini-select">
+          <option v-for="item in themeOptions" :key="item.value" :value="item.value">
+            {{ item.label }}
+          </option>
+        </select>
+      </label>
 
-      <div class="editor-collab-row">
-        <div class="editor-collab-avatars">
-          <span
-            v-for="item in collaborators.slice(0, 2)"
-            :key="item.id"
-            class="editor-collab-avatar"
-            :style="{ '--avatar-color': item.color }"
-            :title="item.name"
-          >
-            {{ item.name.slice(0, 1).toUpperCase() }}
-          </span>
-          <span class="editor-collab-avatar count">+{{ Math.max(collaborators.length, 3) }}</span>
-        </div>
-        <span class="editor-collab-text">Editing now with Sarah and James</span>
-      </div>
-    </header>
+      <label class="check-inline">
+        <input v-model="darkMode" type="checkbox" /> Dark
+      </label>
 
-    <div class="toolbar action-bar">
+      <label class="check-inline">
+        <input v-model="readonlyMode" type="checkbox" /> 只读
+      </label>
+
+      <label class="check-inline">
+        <input v-model="autoSyncMarkdown" type="checkbox" /> 右侧自动同步
+      </label>
+
+      <button type="button" class="btn" @click="openPalette">功能面板 (Ctrl+K)</button>
+      <button
+        type="button"
+        class="btn"
+        :aria-expanded="markdownPaneVisible"
+        @click="markdownPaneVisible = !markdownPaneVisible"
+      >
+        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
+      </button>
+      <button type="button" class="btn" :disabled="isRebuilding" @click="applyMarkdownFromPane">应用右侧 Markdown</button>
+      <button type="button" class="btn" @click="resetSampleMarkdown">恢复示例</button>
+      <button type="button" class="btn" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
       <button type="button" class="btn" @click="connectCollab">连接协同</button>
       <button type="button" class="btn ghost" @click="disconnectCollab">断开协同</button>
       <span class="status" :data-online="status === 'connected'">{{ status }}</span>
-      <span class="status collab-count" :data-online="status === 'connected'">{{ collaboratorCountLabel }}</span>
-      <button type="button" class="btn ghost" :aria-expanded="markdownPaneVisible" @click="markdownPaneVisible = !markdownPaneVisible">
-        {{ markdownPaneVisible ? '隐藏 Markdown' : '显示 Markdown' }}
-      </button>
-      <button type="button" class="btn ghost" @click="void applyMarkdownFromPane">应用右侧 Markdown</button>
-      <button type="button" class="btn ghost" @click="resetSampleMarkdown">恢复示例</button>
-      <button type="button" class="btn ghost" @click="copyMarkdown">{{ copied ? '已复制' : '复制 Markdown' }}</button>
-      <button type="button" class="btn ghost" @click="openPalette">功能面板 (Ctrl+K)</button>
+      <span class="status collab-count" :data-online="status === 'connected'">
+        {{ collaboratorCountLabel }}
+      </span>
+      <div v-if="collaborators.length" class="collab-presence">
+        <span
+          v-for="item in collaborators"
+          :key="item.id"
+          class="collab-user"
+          :class="{ local: item.isLocal }"
+          :style="{ '--user-color': item.color }"
+        >
+          <i class="collab-user-dot"></i>
+          {{ item.isLocal ? `${item.name}（我）` : item.name }}
+        </span>
+      </div>
     </div>
 
-    <div class="floating-markdown-toolbar" aria-label="Formatting toolbar">
-      <button type="button" class="floating-tool-btn" title="Bold">
-        <span class="material-symbols-outlined">format_bold</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Italic">
-        <span class="material-symbols-outlined">format_italic</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Strike">
-        <span class="material-symbols-outlined">strikethrough_s</span>
-      </button>
-      <span class="floating-divider"></span>
-      <button type="button" class="floating-tool-btn" title="H1">
-        <span class="material-symbols-outlined">format_h1</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="H2">
-        <span class="material-symbols-outlined">format_h2</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="List">
-        <span class="material-symbols-outlined">format_list_bulleted</span>
-      </button>
-      <span class="floating-divider"></span>
-      <button type="button" class="floating-tool-btn" title="Checkbox">
-        <span class="material-symbols-outlined">check_box</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Code">
-        <span class="material-symbols-outlined">code</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Link">
-        <span class="material-symbols-outlined">link</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Image">
-        <span class="material-symbols-outlined">image</span>
-      </button>
-      <button type="button" class="floating-tool-btn" title="Quote">
-        <span class="material-symbols-outlined">format_quote</span>
-      </button>
-    </div>
+    <section class="milk-playground-config card">
+      <div class="config-head">
+        <h3>Crepe Feature 开关</h3>
+        <span>{{ enabledFeatureCount }} / {{ crepeFeatureItems.length }} 已启用</span>
+      </div>
+      <div class="feature-grid">
+        <label v-for="item in crepeFeatureItems" :key="item.key" class="feature-switch">
+          <input v-model="featureFlags[item.key]" type="checkbox" />
+          <div>
+            <strong>{{ item.label }}</strong>
+            <p>{{ item.description }}</p>
+          </div>
+        </label>
+      </div>
+    </section>
 
-    <div class="milk-workbench editorial-workbench" data-layout-slot="workbench">
-      <section class="play-pane play-pane-editor editorial-pane">
+    <div class="milk-workbench">
+      <section class="play-pane play-pane-editor">
+        <header class="play-pane-head">
+          <h3>Visual Editor</h3>
+          <span>{{ activeThemeClass }}</span>
+        </header>
         <div class="play-editor-shell" :class="activeThemeClass">
           <div ref="host" class="playground-host"></div>
         </div>
+
       </section>
 
-      <aside
-        class="play-side-panels editorial-comment-drawer"
-        data-layout-slot="comment-drawer"
-        :class="{ 'is-open': commentDrawerOpen, 'is-collapsed': !commentDrawerOpen }"
-      >
-        <CommentPanel
-          ref="commentPanelRef"
-          :comments="comments"
-          :active-comment-id="activeCommentId"
-          :comments-collapsed="!commentDrawerOpen"
-          :selected-quote="selectedRange?.quote ?? ''"
-          :has-selected-range="Boolean(selectedRange)"
-          v-model:comment-draft="commentDraft"
-          @toggle-collapse="toggleCommentDrawer"
-          @submit-comment="submitComment"
-          @focus-comment="focusComment"
-          @delete-comment="deleteComment"
-        />
+      <aside class="play-side-panels">
+        <section class="panel comments-panel">
+          <div class="comments-panel-head">
+            <div>
+              <h3>评论</h3>
+              <p class="panel-tip">{{ commentCountLabel }} · 选中正文后可直接补评</p>
+            </div>
+            <div class="panel-head-actions">
+              <span class="comments-badge" :data-active="Boolean(activeComment)">
+                {{ activeComment ? '已定位' : '未选中' }}
+              </span>
+              <button
+                type="button"
+                class="panel-toggle"
+                :aria-expanded="!commentsCollapsed"
+                @click="commentsCollapsed = !commentsCollapsed"
+              >
+                {{ commentsCollapsed ? '展开' : '收起' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-show="!commentsCollapsed" class="panel-section-body">
+            <blockquote class="selection-quote" :class="{ empty: !selectedRange }">
+              {{ selectedQuotePreview }}
+            </blockquote>
+
+            <textarea
+              ref="commentInputRef"
+              v-model="commentDraft"
+              class="comment-input"
+              rows="4"
+              placeholder="例如：这里需要补充背景、补数据来源，或者给出结论解释。"
+            ></textarea>
+
+            <div class="row-actions comment-actions">
+              <button
+                type="button"
+                class="btn"
+                :disabled="!selectedRange || !commentDraft.trim()"
+                @click="submitComment"
+              >
+                添加评论
+              </button>
+              <span class="panel-tip">点击列表项可回到正文锚点</span>
+            </div>
+
+            <ul v-if="comments.length" class="panel-list comments-list">
+              <li
+                v-for="item in comments"
+                :key="item.id"
+                :ref="(element) => setCommentItemRef(item.id, element)"
+                class="panel-item comment-card"
+                :class="{ active: item.id === activeCommentId }"
+                @click="focusComment(item)"
+              >
+                <div class="panel-item-head">
+                  <strong>{{ item.author }}</strong>
+                  <span>{{ formatTime(item.createdAt) }}</span>
+                </div>
+                <p class="comment-text">{{ item.text }}</p>
+                <p class="panel-item-quote">“{{ item.quote }}”</p>
+                <div class="row-actions">
+                  <button type="button" class="btn xs" @click.stop="focusComment(item)">定位</button>
+                  <button type="button" class="btn xs ghost" @click.stop="deleteComment(item.id)">
+                    删除
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="panel-tip comments-empty">
+              还没有评论。先在左侧选中一段文本，再输入评论内容。
+            </p>
+          </div>
+        </section>
+
+        <section class="panel history-panel">
+          <div class="history-panel-head">
+            <div>
+              <h3>历史记录</h3>
+              <p class="panel-tip">{{ snapshotCountLabel }} · 点击版本卡片即可还原左侧文档</p>
+            </div>
+            <div class="panel-head-actions">
+              <span class="history-badge" :data-active="Boolean(activeSnapshot)">
+                {{ activeSnapshot ? '当前版本' : '未选中' }}
+              </span>
+              <button
+                type="button"
+                class="panel-toggle"
+                :aria-expanded="!historyCollapsed"
+                @click="historyCollapsed = !historyCollapsed"
+              >
+                {{ historyCollapsed ? '展开' : '收起' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-show="!historyCollapsed" class="panel-section-body">
+            <input
+              v-model="snapshotLabel"
+              class="mini-input"
+              type="text"
+              placeholder="例如：补充结论前 / 发布前检查"
+              @keydown.enter.prevent="createHistorySnapshot"
+            />
+
+            <div class="row-actions history-actions">
+              <button type="button" class="btn" @click="createHistorySnapshot">创建快照</button>
+              <span class="panel-tip">默认会保存当前文档和评论状态</span>
+            </div>
+
+            <ul v-if="snapshots.length" class="panel-list history-list">
+              <li
+                v-for="item in snapshots"
+                :key="item.id"
+                class="panel-item history-card"
+                :class="{ active: item.id === activeSnapshotId }"
+                role="button"
+                tabindex="0"
+                :aria-pressed="item.id === activeSnapshotId"
+                @click="void selectHistorySnapshot(item)"
+                @keydown.enter.prevent="void selectHistorySnapshot(item)"
+                @keydown.space.prevent="void selectHistorySnapshot(item)"
+              >
+                <div class="panel-item-head">
+                  <strong>{{ item.label }}</strong>
+                  <span>{{ formatTime(item.createdAt) }}</span>
+                </div>
+                <p class="history-preview">{{ getSnapshotPreview(item) }}</p>
+                <div class="row-actions">
+                  <button type="button" class="btn xs" @click.stop="restoreHistorySnapshot(item)">
+                    还原
+                  </button>
+                  <button type="button" class="btn xs ghost" @click.stop="deleteHistorySnapshot(item.id)">
+                    删除
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="panel-tip comments-empty">
+              还没有历史记录。手动创建一个快照后，就可以随时把文档还原到对应版本。
+            </p>
+          </div>
+        </section>
       </aside>
 
-      <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown editorial-pane">
+      <section v-if="markdownPaneVisible" class="play-pane play-pane-markdown">
         <header class="play-pane-head">
           <h3>Markdown</h3>
           <div class="play-pane-head-actions">
@@ -2163,41 +1983,25 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
-    <div
-      v-if="historyModalOpen"
-      class="history-modal-mask ed-modal-mask"
-      data-layout-slot="history-modal"
-      role="presentation"
-      @click="closeHistoryModal"
-    >
-      <div
-        class="history-modal-shell ed-modal-panel ed-modal-panel--wide"
-        role="dialog"
-        aria-modal="true"
-        aria-label="History snapshots"
-        @click.stop
-      >
-        <HistoryPanel
-          :snapshots="snapshots"
-          :active-snapshot-id="activeSnapshotId"
-          :history-collapsed="false"
-          v-model:snapshot-label="snapshotLabel"
-          @toggle-collapse="closeHistoryModal"
-          @create-snapshot="createHistorySnapshot"
-          @select-snapshot="void selectHistorySnapshot($event)"
-          @restore-snapshot="void restoreHistorySnapshot($event)"
-          @delete-snapshot="deleteHistorySnapshot"
-        />
+    <section class="playground-capability card">
+      <h3>Playground 能力清单</h3>
+      <div class="cap-grid">
+        <article v-for="section in capabilitySections" :key="section.title" class="cap-card">
+          <h4>{{ section.title }}</h4>
+          <div class="cap-chips">
+            <span v-for="item in section.items" :key="item" class="cap-chip">{{ item }}</span>
+          </div>
+        </article>
       </div>
-    </div>
+    </section>
 
     <p class="tip">
-      编辑提示：在左侧输入 <code>/</code> 打开块菜单；按 <code>Ctrl+K</code> 打开功能面板；选中正文后可添加评论，历史通过顶部按钮打开弹框。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
+      编辑提示：在左侧输入 <code>/</code> 打开块菜单；选中正文后，可在浮动工具栏点击评论按钮，再到右侧输入评论并定位回锚点。历史记录为手动快照，可在右侧直接还原。协同房间：<code>{{ room }}</code>，服务地址：<code>{{ wsUrl }}</code>
     </p>
   </section>
 
-  <div v-if="paletteVisible" class="command-menu-mask ed-modal-mask" @click="closePalette">
-    <div class="command-menu ed-modal-panel ed-modal-panel--compact" @click.stop>
+  <div v-if="paletteVisible" class="command-menu-mask" @click="closePalette">
+    <div class="command-menu" @click.stop>
       <div class="command-menu-title">Milkdown 功能面板</div>
       <input
         ref="paletteInputRef"
@@ -2264,3 +2068,24 @@ onBeforeUnmount(() => {
     @save="saveMindmap"
   />
 </template>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

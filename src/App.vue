@@ -15,7 +15,7 @@ const toggleStrategy = () => {
 </script>
 
 <template>
-  <div class="layout">
+  <!-- <div class="layout">
     <header class="topbar">
       <div class="topbar-left">
         <div class="topbar-brand-wrap">
@@ -194,6 +194,12 @@ const toggleStrategy = () => {
         <RouterView />
       </div>
     </main>
-  </div>
+  </div> -->
+
+   <!-- <main class="content">
+      <div class="content-inner"> -->
+        <RouterView />
+      <!-- </div>
+    </main> -->
 </template>
 
